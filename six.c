@@ -17,7 +17,7 @@
 #define M N*(N+1)
 // Highest number of walls in one line
 #define W 15
-#define EDGE_ARRAY_LENGTH 4000
+#define EDGE_ARRAY_LENGTH 3000
 
 typedef enum {
     UP = 0,
@@ -110,7 +110,7 @@ int countPointsVisitedByGuard(const char *ptr, const char *end) {
 }
 
 static int pointOutsideLab(const Point point) {
-    return point.direction == NO_POINT.direction;
+    return point.x == NONE;
 }
 
 static u8 insertIndex(const u8 *arr, u8 n) {
@@ -353,7 +353,7 @@ void six_1() {
     benchmarkFunctionOnFile("../input/6.txt", &countPointsVisitedByGuard, 400000, 4433);
 }
 
-// 0.852 ms
+// 0.776 ms
 void six_2() {
     benchmarkFunctionOnFile("../input/6.txt", &countSuccessfulObstructionPositions, 2000, 1516);
 }
