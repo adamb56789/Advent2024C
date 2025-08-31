@@ -124,33 +124,35 @@ static u8 insertIndex(const u8 *arr, u8 n) {
 }
 
 // ReSharper disable CppDFANotInitializedField
-static Point wallsNextPoint(const Walls *walls, const Point point) {
-    if (point.direction == LEFT) {
-        const u8 i = insertIndex(walls->vertical[point.x], point.y);
-        if (i == 0) return NO_POINT;
-        const Point result = {point.x, walls->vertical[point.x][i - 1] + 1, UP};
-        return result;
-    }
-    if (point.direction == RIGHT) {
-        const u8 i = insertIndex(walls->vertical[point.x], point.y);
-        if (walls->vertical[point.x][i] == 255) return NO_POINT;
-        const Point result = {point.x, walls->vertical[point.x][i] - 1, DOWN};
-        return result;
-    }
-    if (point.direction == DOWN) {
-        const u8 i = insertIndex(walls->horizontal[point.y], point.x);
-        if (i == 0) return NO_POINT;
-        const Point result = {walls->horizontal[point.y][i - 1] + 1, point.y, LEFT};
-        return result;
-    }
-    if (point.direction == UP) {
-        const u8 i = insertIndex(walls->horizontal[point.y], point.x);
-        if (walls->horizontal[point.y][i] == 255) return NO_POINT;
-        const Point result = {walls->horizontal[point.y][i] - 1, point.y, RIGHT};
-        return result;
-    }
-    printf("oh no\n");
-    exit(-1);
+static Point wallsNextPointUp(const Walls *walls, const Point point) {
+    const u8 i = insertIndex(walls->vertical[point.x], point.y);
+    if (i == 0) return NO_POINT;
+    const Point result = {point.x, walls->vertical[point.x][i - 1] + 1, UP};
+    return result;
+}
+
+// ReSharper disable CppDFANotInitializedField
+static Point wallsNextPointRight(const Walls *walls, const Point point) {
+    const u8 i = insertIndex(walls->horizontal[point.y], point.x);
+    if (walls->horizontal[point.y][i] == 255) return NO_POINT;
+    const Point result = {walls->horizontal[point.y][i] - 1, point.y, RIGHT};
+    return result;
+}
+
+// ReSharper disable CppDFANotInitializedField
+static Point wallsNextPointDown(const Walls *walls, const Point point) {
+    const u8 i = insertIndex(walls->vertical[point.x], point.y);
+    if (walls->vertical[point.x][i] == 255) return NO_POINT;
+    const Point result = {point.x, walls->vertical[point.x][i] - 1, DOWN};
+    return result;
+}
+
+// ReSharper disable CppDFANotInitializedField
+static Point wallsNextPointLeft(const Walls *walls, const Point point) {
+    const u8 i = insertIndex(walls->horizontal[point.y], point.x);
+    if (i == 0) return NO_POINT;
+    const Point result = {walls->horizontal[point.y][i - 1] + 1, point.y, LEFT};
+    return result;
 }
 
 static void insertIntoSortedArray(u8 arr[W], const u8 val) {
@@ -183,15 +185,42 @@ static int isLoop(const Graph *graph, const Walls *walls, const int start, u8 di
     while (1) {
         p = edge.point;
         u16 nextIndex;
-        if (
-            p.x == obstacleX && (p.direction == LEFT && p.y > obstacleY || p.direction == RIGHT && p.y < obstacleY) ||
-            p.y == obstacleY && (p.direction == DOWN && p.x > obstacleX || p.direction == UP && p.x < obstacleX)
-        ) {
-            p = wallsNextPoint(walls, p);
+        if (p.x == obstacleX && p.direction == LEFT && p.y > obstacleY) {
+            p = wallsNextPointUp(walls, p);
             if (pointOutsideLab(p)) break;
-            if (abs(p.x - obstacleX) + abs(p.y - obstacleY)) {
+            if (p.y == obstacleY + 1) {
                 // We've hit the obstacle, so need to do another wall navigation since it isn't in the graph
-                p = wallsNextPoint(walls, p);
+                p = wallsNextPointRight(walls, p);
+                if (pointOutsideLab(p)) break;
+            }
+            nextIndex = graph->gridToEdge[p.y][p.x][p.direction];
+            if (nextIndex == EDGE_EXITS_LAB) break;
+            edge = graph->edges[nextIndex];
+        } else if (p.x == obstacleX && p.direction == RIGHT && p.y < obstacleY) {
+            p = wallsNextPointDown(walls, p);
+            if (pointOutsideLab(p)) break;
+            if (p.y == obstacleY - 1) {
+                p = wallsNextPointLeft(walls, p);
+                if (pointOutsideLab(p)) break;
+            }
+            nextIndex = graph->gridToEdge[p.y][p.x][p.direction];
+            if (nextIndex == EDGE_EXITS_LAB) break;
+            edge = graph->edges[nextIndex];
+        } else if (p.y == obstacleY && p.direction == DOWN && p.x > obstacleX) {
+            p = wallsNextPointLeft(walls, p);
+            if (pointOutsideLab(p)) break;
+            if (p.x == obstacleX + 1) {
+                p = wallsNextPointUp(walls, p);
+                if (pointOutsideLab(p)) break;
+            }
+            nextIndex = graph->gridToEdge[p.y][p.x][p.direction];
+            if (nextIndex == EDGE_EXITS_LAB) break;
+            edge = graph->edges[nextIndex];
+        } else if (p.y == obstacleY && p.direction == UP && p.x < obstacleX) {
+            p = wallsNextPointRight(walls, p);
+            if (pointOutsideLab(p)) break;
+            if (p.x == obstacleX - 1) {
+                p = wallsNextPointDown(walls, p);
                 if (pointOutsideLab(p)) break;
             }
             nextIndex = graph->gridToEdge[p.y][p.x][p.direction];
@@ -240,7 +269,7 @@ int countSuccessfulObstructionPositions(const char *ptr, const char *end) {
             if (ptr[y * R + x] != '#') continue;
             if (y < N - 1) {
                 const Point in = {x, y + 1, UP};
-                const Point out = wallsNextPoint(&walls, in);
+                const Point out = wallsNextPointRight(&walls, in);
                 if (!pointOutsideLab(out)) {
                     graph.gridToEdge[in.y][in.x][in.direction] = edgeIndex;
                     const Edge e = {out, EDGE_EXITS_LAB};
@@ -249,7 +278,7 @@ int countSuccessfulObstructionPositions(const char *ptr, const char *end) {
             }
             if (x > 0) {
                 const Point in = {x - 1, y, RIGHT};
-                const Point out = wallsNextPoint(&walls, in);
+                const Point out = wallsNextPointDown(&walls, in);
                 if (!pointOutsideLab(out)) {
                     graph.gridToEdge[in.y][in.x][in.direction] = edgeIndex;
                     const Edge e = {out, EDGE_EXITS_LAB};
@@ -258,7 +287,7 @@ int countSuccessfulObstructionPositions(const char *ptr, const char *end) {
             }
             if (y > 0) {
                 const Point in = {x, y - 1, DOWN};
-                const Point out = wallsNextPoint(&walls, in);
+                const Point out = wallsNextPointLeft(&walls, in);
                 if (!pointOutsideLab(out)) {
                     graph.gridToEdge[in.y][in.x][in.direction] = edgeIndex;
                     const Edge e = {out, EDGE_EXITS_LAB};
@@ -267,7 +296,7 @@ int countSuccessfulObstructionPositions(const char *ptr, const char *end) {
             }
             if (x < N - 1) {
                 const Point in = {x + 1, y, LEFT};
-                const Point out = wallsNextPoint(&walls, in);
+                const Point out = wallsNextPointUp(&walls, in);
                 if (!pointOutsideLab(out)) {
                     graph.gridToEdge[in.y][in.x][in.direction] = edgeIndex;
                     const Edge e = {out, EDGE_EXITS_LAB};
@@ -314,7 +343,7 @@ int countSuccessfulObstructionPositions(const char *ptr, const char *end) {
     }
 
     return count;
-    return walls.vertical[129][0] == 123 || walls.horizontal[129][0] == 123? 0 : 1516;
+    return walls.vertical[129][0] == 123 || walls.horizontal[129][0] == 123 ? 0 : 1516;
 }
 
 // 0.004070 ms
@@ -324,7 +353,7 @@ void six_1() {
     benchmarkFunctionOnFile("../input/6.txt", &countPointsVisitedByGuard, 400000, 4433);
 }
 
-// 0.915 ms
+// 0.852 ms
 void six_2() {
-    benchmarkFunctionOnFile("../input/6.txt", &countSuccessfulObstructionPositions, 1000, 1516);
+    benchmarkFunctionOnFile("../input/6.txt", &countSuccessfulObstructionPositions, 2000, 1516);
 }
