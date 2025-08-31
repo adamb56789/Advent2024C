@@ -168,7 +168,35 @@ static void removeFromSortedArray(u8 arr[W], const u8 val) {
     memmove(&arr[i], &arr[i + 1], (W - 1 - i) * sizeof(u8));
 }
 
-static int isLoop(const Graph *graph, const Walls *walls, const int start, u8 direction, const int obstacle) {
+static int isLoop(const Graph *graph, const Walls *walls, const int start, const u8 direction, const int obstacle) {
+    // When the obstacle is involved we can't use the pregenerated edge graph, so use the walls instead.
+    // The starting position is directly facing the obstacle, so we start with a wall navigation.
+    // After going from the obstacle to a wall, we need to do a wall navigation again since that wall might not be
+    // an existing target in the edge graph. You could skip this step and pretend we've just hit a wall to the left
+    // of where we're facing and the loop will take care of it, but it is faster to take care of the special case.
+    Point p = {start % R, start / R, direction};
+    if (direction == UP) {
+        p = wallsNextPointRight(walls, p);
+        if (pointOutsideLab(p)) return 0;
+        p = wallsNextPointDown(walls, p);
+    } else if (direction == RIGHT) {
+        p = wallsNextPointDown(walls, p);
+        if (pointOutsideLab(p)) return 0;
+        p = wallsNextPointLeft(walls, p);
+    } else if (direction == DOWN) {
+        p = wallsNextPointLeft(walls, p);
+        if (pointOutsideLab(p)) return 0;
+        p = wallsNextPointUp(walls, p);
+    } else {
+        p = wallsNextPointUp(walls, p);
+        if (pointOutsideLab(p)) return 0;
+        p = wallsNextPointRight(walls, p);
+    }
+    if (pointOutsideLab(p)) return 0;
+    u16 nextIndex = graph->gridToEdge[p.y][p.x][p.direction];
+    if (nextIndex == EDGE_EXITS_LAB) return 0;
+    Edge edge = graph->edges[nextIndex];
+
     const u8 obstacleX = obstacle % R;
     const u8 obstacleY = obstacle / R;
     insertIntoSortedArray(walls->horizontal[obstacleY], obstacleX);
@@ -177,14 +205,9 @@ static int isLoop(const Graph *graph, const Walls *walls, const int start, u8 di
     u8 visited[EDGE_ARRAY_LENGTH] = {0};
     u8 foundLoop = 0;
 
-    int x = start % R;
-    int y = start / R;
-    Point p = {x, y, (direction + 3) % 4};
-
-    Edge edge = {p, 0}; // Dummy value
+    // Edge edge = {p, 0}; // Dummy value
     while (1) {
         p = edge.point;
-        u16 nextIndex;
         if (p.x == obstacleX && p.direction == LEFT && p.y > obstacleY) {
             p = wallsNextPointUp(walls, p);
             if (pointOutsideLab(p)) break;
