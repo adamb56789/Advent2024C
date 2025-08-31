@@ -267,7 +267,7 @@ int countSuccessfulObstructionPositions(const char *ptr, const char *end) {
     for (int y = 0; y < N; ++y) {
         for (int x = 0; x < N; ++x) {
             if (ptr[y * R + x] != '#') continue;
-            if (y < N - 1) {
+            if (y < N - 2 && 0 < x && x < N - 1) {
                 const Point in = {x, y + 1, UP};
                 const Point out = wallsNextPointRight(&walls, in);
                 if (!pointOutsideLab(out)) {
@@ -276,7 +276,7 @@ int countSuccessfulObstructionPositions(const char *ptr, const char *end) {
                     graph.edges[edgeIndex++] = e;
                 }
             }
-            if (x > 0) {
+            if (x > 1 && 0 < y && y < N - 1) {
                 const Point in = {x - 1, y, RIGHT};
                 const Point out = wallsNextPointDown(&walls, in);
                 if (!pointOutsideLab(out)) {
@@ -285,7 +285,7 @@ int countSuccessfulObstructionPositions(const char *ptr, const char *end) {
                     graph.edges[edgeIndex++] = e;
                 }
             }
-            if (y > 0) {
+            if (y > 1 && 0 < x && x < N - 1) {
                 const Point in = {x, y - 1, DOWN};
                 const Point out = wallsNextPointLeft(&walls, in);
                 if (!pointOutsideLab(out)) {
@@ -294,7 +294,7 @@ int countSuccessfulObstructionPositions(const char *ptr, const char *end) {
                     graph.edges[edgeIndex++] = e;
                 }
             }
-            if (x < N - 1) {
+            if (x < N - 2 && 0 < y && y < N - 1) {
                 const Point in = {x + 1, y, LEFT};
                 const Point out = wallsNextPointUp(&walls, in);
                 if (!pointOutsideLab(out)) {
@@ -305,6 +305,10 @@ int countSuccessfulObstructionPositions(const char *ptr, const char *end) {
             }
         }
     }
+    // 2755
+    // 2748
+    // 2732
+    // 2707
 
     // We can't add the nextIndex on first pass since we don't know if there is a next edge or where it is
     for (int i = 1; i < edgeIndex; ++i) {
@@ -353,7 +357,7 @@ void six_1() {
     benchmarkFunctionOnFile("../input/6.txt", &countPointsVisitedByGuard, 400000, 4433);
 }
 
-// 0.776 ms
+// 0.774 ms
 void six_2() {
     benchmarkFunctionOnFile("../input/6.txt", &countSuccessfulObstructionPositions, 2000, 1516);
 }
