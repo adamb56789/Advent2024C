@@ -171,29 +171,49 @@ static void removeFromSortedArray(u8 arr[W], const u8 val) {
 static int isLoop(const Graph *graph, const Walls *walls, const int start, const u8 direction, const int obstacle) {
     // When the obstacle is involved we can't use the pregenerated edge graph, so use the walls instead.
     // The starting position is directly facing the obstacle, so we start with a wall navigation.
-    // After going from the obstacle to a wall, we need to do a wall navigation again since that wall might not be
-    // an existing target in the edge graph. You could skip this step and pretend we've just hit a wall to the left
+    // You could skip this step and pretend we've just hit a wall to the left
     // of where we're facing and the loop will take care of it, but it is faster to take care of the special case.
+    // After going from the obstacle to a wall, we might need to do a wall navigation again since that wall might not be
+    // an existing target in the edge graph.
     Point p = {start % R, start / R, direction};
+    u16 nextIndex;
     if (direction == UP) {
         p = wallsNextPointRight(walls, p);
         if (pointOutsideLab(p)) return 0;
-        p = wallsNextPointDown(walls, p);
+        nextIndex = graph->gridToEdge[p.y][p.x][p.direction];
+        if (nextIndex == EDGE_EXITS_LAB) {
+            p = wallsNextPointDown(walls, p);
+            if (pointOutsideLab(p)) return 0;
+            nextIndex = graph->gridToEdge[p.y][p.x][p.direction];
+        }
     } else if (direction == RIGHT) {
         p = wallsNextPointDown(walls, p);
         if (pointOutsideLab(p)) return 0;
-        p = wallsNextPointLeft(walls, p);
+        nextIndex = graph->gridToEdge[p.y][p.x][p.direction];
+        if (nextIndex == EDGE_EXITS_LAB) {
+            p = wallsNextPointLeft(walls, p);
+            if (pointOutsideLab(p)) return 0;
+            nextIndex = graph->gridToEdge[p.y][p.x][p.direction];
+        }
     } else if (direction == DOWN) {
         p = wallsNextPointLeft(walls, p);
         if (pointOutsideLab(p)) return 0;
-        p = wallsNextPointUp(walls, p);
+        nextIndex = graph->gridToEdge[p.y][p.x][p.direction];
+        if (nextIndex == EDGE_EXITS_LAB) {
+            p = wallsNextPointUp(walls, p);
+            if (pointOutsideLab(p)) return 0;
+            nextIndex = graph->gridToEdge[p.y][p.x][p.direction];
+        }
     } else {
         p = wallsNextPointUp(walls, p);
         if (pointOutsideLab(p)) return 0;
-        p = wallsNextPointRight(walls, p);
+        nextIndex = graph->gridToEdge[p.y][p.x][p.direction];
+        if (nextIndex == EDGE_EXITS_LAB) {
+            p = wallsNextPointRight(walls, p);
+            if (pointOutsideLab(p)) return 0;
+            nextIndex = graph->gridToEdge[p.y][p.x][p.direction];
+        }
     }
-    if (pointOutsideLab(p)) return 0;
-    u16 nextIndex = graph->gridToEdge[p.y][p.x][p.direction];
     if (nextIndex == EDGE_EXITS_LAB) return 0;
     Edge edge = graph->edges[nextIndex];
 
