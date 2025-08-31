@@ -38,13 +38,18 @@ typedef struct {
 typedef struct {
     u8 x;
     u8 y;
-    u8 direction;
-} Point;
-
-const Point NO_POINT = {NONE, NONE, NONE};
+} Coords;
 
 typedef struct {
-    Point point;
+    u8 x;
+    u8 y;
+    u8 direction;
+} Corner;
+
+const Corner NO_CORNER = {NONE, NONE, NONE};
+
+typedef struct {
+    Corner corner;
     u16 nextIndex;
 } Edge;
 
@@ -109,11 +114,11 @@ int countPointsVisitedByGuard(const char *ptr, const char *end) {
     return countSetBytes(visited);
 }
 
-static int pointOutsideLab(const Point point) {
-    return point.x == NONE;
+static int isCornerOutsideLab(const Corner corner) {
+    return corner.x == NONE;
 }
 
-static u8 insertIndex(const u8 *arr, u8 n) {
+static u8 insertIndex(const u8 *arr, const u8 n) {
     u8 i = 0;
     for (; i < W; ++i) {
         if (arr[i] == 255 || n <= arr[i]) {
@@ -124,34 +129,34 @@ static u8 insertIndex(const u8 *arr, u8 n) {
 }
 
 // ReSharper disable CppDFANotInitializedField
-static Point wallsNextPointUp(const Walls *walls, const Point point) {
-    const u8 i = insertIndex(walls->vertical[point.x], point.y);
-    if (i == 0) return NO_POINT;
-    const Point result = {point.x, walls->vertical[point.x][i - 1] + 1, UP};
+static Corner wallsNextCornerUp(const Walls *walls, const Corner corner) {
+    const u8 i = insertIndex(walls->vertical[corner.x], corner.y);
+    if (i == 0) return NO_CORNER;
+    const Corner result = {corner.x, walls->vertical[corner.x][i - 1] + 1, UP};
     return result;
 }
 
 // ReSharper disable CppDFANotInitializedField
-static Point wallsNextPointRight(const Walls *walls, const Point point) {
-    const u8 i = insertIndex(walls->horizontal[point.y], point.x);
-    if (walls->horizontal[point.y][i] == 255) return NO_POINT;
-    const Point result = {walls->horizontal[point.y][i] - 1, point.y, RIGHT};
+static Corner wallsNextCornerRight(const Walls *walls, const Corner corner) {
+    const u8 i = insertIndex(walls->horizontal[corner.y], corner.x);
+    if (walls->horizontal[corner.y][i] == 255) return NO_CORNER;
+    const Corner result = {walls->horizontal[corner.y][i] - 1, corner.y, RIGHT};
     return result;
 }
 
 // ReSharper disable CppDFANotInitializedField
-static Point wallsNextPointDown(const Walls *walls, const Point point) {
-    const u8 i = insertIndex(walls->vertical[point.x], point.y);
-    if (walls->vertical[point.x][i] == 255) return NO_POINT;
-    const Point result = {point.x, walls->vertical[point.x][i] - 1, DOWN};
+static Corner wallsNextCornerDown(const Walls *walls, const Corner corner) {
+    const u8 i = insertIndex(walls->vertical[corner.x], corner.y);
+    if (walls->vertical[corner.x][i] == 255) return NO_CORNER;
+    const Corner result = {corner.x, walls->vertical[corner.x][i] - 1, DOWN};
     return result;
 }
 
 // ReSharper disable CppDFANotInitializedField
-static Point wallsNextPointLeft(const Walls *walls, const Point point) {
-    const u8 i = insertIndex(walls->horizontal[point.y], point.x);
-    if (i == 0) return NO_POINT;
-    const Point result = {walls->horizontal[point.y][i - 1] + 1, point.y, LEFT};
+static Corner wallsNextCornerLeft(const Walls *walls, const Corner corner) {
+    const u8 i = insertIndex(walls->horizontal[corner.y], corner.x);
+    if (i == 0) return NO_CORNER;
+    const Corner result = {walls->horizontal[corner.y][i - 1] + 1, corner.y, LEFT};
     return result;
 }
 
@@ -175,14 +180,14 @@ static int isLoop(const Graph *graph, const Walls *walls, const int start, const
     // of where we're facing and the loop will take care of it, but it is faster to take care of the special case.
     // After going from the obstacle to a wall, we might need to do a wall navigation again since that wall might not be
     // an existing target in the edge graph. I forgot about that when I first wrote it, and it still works, so whatever.
-    Point p = {start % R, start / R, direction};
+    Corner p = {start % R, start / R, direction};
 
-    if (direction == UP) p = wallsNextPointRight(walls, p);
-    else if (direction == RIGHT) p = wallsNextPointDown(walls, p);
-    else if (direction == DOWN) p = wallsNextPointLeft(walls, p);
-    else p = wallsNextPointUp(walls, p);
+    if (direction == UP) p = wallsNextCornerRight(walls, p);
+    else if (direction == RIGHT) p = wallsNextCornerDown(walls, p);
+    else if (direction == DOWN) p = wallsNextCornerLeft(walls, p);
+    else p = wallsNextCornerUp(walls, p);
 
-    if (pointOutsideLab(p)) return 0;
+    if (isCornerOutsideLab(p)) return 0;
     u16 nextIndex = graph->gridToEdge[p.y][p.x][p.direction];
     if (nextIndex == EDGE_EXITS_LAB) return 0;
     Edge edge = graph->edges[nextIndex];
@@ -197,44 +202,44 @@ static int isLoop(const Graph *graph, const Walls *walls, const int start, const
 
     // Edge edge = {p, 0}; // Dummy value
     while (1) {
-        p = edge.point;
+        p = edge.corner;
         if (p.x == obstacleX && p.direction == LEFT && p.y > obstacleY) {
-            p = wallsNextPointUp(walls, p);
-            if (pointOutsideLab(p)) break;
+            p = wallsNextCornerUp(walls, p);
+            if (isCornerOutsideLab(p)) break;
             if (p.y == obstacleY + 1) {
                 // We've hit the obstacle, so need to do another wall navigation since it isn't in the graph
-                p = wallsNextPointRight(walls, p);
-                if (pointOutsideLab(p)) break;
+                p = wallsNextCornerRight(walls, p);
+                if (isCornerOutsideLab(p)) break;
             }
             nextIndex = graph->gridToEdge[p.y][p.x][p.direction];
             if (nextIndex == EDGE_EXITS_LAB) break;
             edge = graph->edges[nextIndex];
         } else if (p.x == obstacleX && p.direction == RIGHT && p.y < obstacleY) {
-            p = wallsNextPointDown(walls, p);
-            if (pointOutsideLab(p)) break;
+            p = wallsNextCornerDown(walls, p);
+            if (isCornerOutsideLab(p)) break;
             if (p.y == obstacleY - 1) {
-                p = wallsNextPointLeft(walls, p);
-                if (pointOutsideLab(p)) break;
+                p = wallsNextCornerLeft(walls, p);
+                if (isCornerOutsideLab(p)) break;
             }
             nextIndex = graph->gridToEdge[p.y][p.x][p.direction];
             if (nextIndex == EDGE_EXITS_LAB) break;
             edge = graph->edges[nextIndex];
         } else if (p.y == obstacleY && p.direction == DOWN && p.x > obstacleX) {
-            p = wallsNextPointLeft(walls, p);
-            if (pointOutsideLab(p)) break;
+            p = wallsNextCornerLeft(walls, p);
+            if (isCornerOutsideLab(p)) break;
             if (p.x == obstacleX + 1) {
-                p = wallsNextPointUp(walls, p);
-                if (pointOutsideLab(p)) break;
+                p = wallsNextCornerUp(walls, p);
+                if (isCornerOutsideLab(p)) break;
             }
             nextIndex = graph->gridToEdge[p.y][p.x][p.direction];
             if (nextIndex == EDGE_EXITS_LAB) break;
             edge = graph->edges[nextIndex];
         } else if (p.y == obstacleY && p.direction == UP && p.x < obstacleX) {
-            p = wallsNextPointRight(walls, p);
-            if (pointOutsideLab(p)) break;
+            p = wallsNextCornerRight(walls, p);
+            if (isCornerOutsideLab(p)) break;
             if (p.x == obstacleX - 1) {
-                p = wallsNextPointDown(walls, p);
-                if (pointOutsideLab(p)) break;
+                p = wallsNextCornerDown(walls, p);
+                if (isCornerOutsideLab(p)) break;
             }
             nextIndex = graph->gridToEdge[p.y][p.x][p.direction];
             if (nextIndex == EDGE_EXITS_LAB) break;
@@ -255,11 +260,6 @@ static int isLoop(const Graph *graph, const Walls *walls, const int start, const
     removeFromSortedArray(walls->vertical[obstacleX], obstacleY);
     return foundLoop;
 }
-
-typedef struct {
-    u8 x;
-    u8 y;
-} Coords;
 
 int countSuccessfulObstructionPositions(const char *ptr, const char *end) {
     Coords wallCoords[1000] = {0};
@@ -293,36 +293,36 @@ int countSuccessfulObstructionPositions(const char *ptr, const char *end) {
 
         if (ptr[y * R + x] != '#') continue;
         if (y < N - 2 && 0 < x && x < N - 1) {
-            const Point in = {x, y + 1, UP};
-            const Point out = wallsNextPointRight(&walls, in);
-            if (!pointOutsideLab(out)) {
+            const Corner in = {x, y + 1, UP};
+            const Corner out = wallsNextCornerRight(&walls, in);
+            if (!isCornerOutsideLab(out)) {
                 graph.gridToEdge[in.y][in.x][in.direction] = edgeIndex;
                 const Edge e = {out, EDGE_EXITS_LAB};
                 graph.edges[edgeIndex++] = e;
             }
         }
         if (x > 1 && 0 < y && y < N - 1) {
-            const Point in = {x - 1, y, RIGHT};
-            const Point out = wallsNextPointDown(&walls, in);
-            if (!pointOutsideLab(out)) {
+            const Corner in = {x - 1, y, RIGHT};
+            const Corner out = wallsNextCornerDown(&walls, in);
+            if (!isCornerOutsideLab(out)) {
                 graph.gridToEdge[in.y][in.x][in.direction] = edgeIndex;
                 const Edge e = {out, EDGE_EXITS_LAB};
                 graph.edges[edgeIndex++] = e;
             }
         }
         if (y > 1 && 0 < x && x < N - 1) {
-            const Point in = {x, y - 1, DOWN};
-            const Point out = wallsNextPointLeft(&walls, in);
-            if (!pointOutsideLab(out)) {
+            const Corner in = {x, y - 1, DOWN};
+            const Corner out = wallsNextCornerLeft(&walls, in);
+            if (!isCornerOutsideLab(out)) {
                 graph.gridToEdge[in.y][in.x][in.direction] = edgeIndex;
                 const Edge e = {out, EDGE_EXITS_LAB};
                 graph.edges[edgeIndex++] = e;
             }
         }
         if (x < N - 2 && 0 < y && y < N - 1) {
-            const Point in = {x + 1, y, LEFT};
-            const Point out = wallsNextPointUp(&walls, in);
-            if (!pointOutsideLab(out)) {
+            const Corner in = {x + 1, y, LEFT};
+            const Corner out = wallsNextCornerUp(&walls, in);
+            if (!isCornerOutsideLab(out)) {
                 graph.gridToEdge[in.y][in.x][in.direction] = edgeIndex;
                 const Edge e = {out, EDGE_EXITS_LAB};
                 graph.edges[edgeIndex++] = e;
@@ -332,7 +332,7 @@ int countSuccessfulObstructionPositions(const char *ptr, const char *end) {
 
     // We can't add the nextIndex on first pass since we don't know if there is a next edge or where it is
     for (int i = 1; i < edgeIndex; ++i) {
-        const Point p = graph.edges[i].point;
+        const Corner p = graph.edges[i].corner;
         graph.edges[i].nextIndex = graph.gridToEdge[p.y][p.x][p.direction];
     }
 
