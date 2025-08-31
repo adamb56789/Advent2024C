@@ -173,7 +173,9 @@ static void removeFromSortedArray(u8 arr[W], const u8 val) {
     memmove(&arr[i], &arr[i + 1], (W - 1 - i) * sizeof(u8));
 }
 
-static int isLoop(const Graph *graph, const Walls *walls, const int start, const u8 direction, const int obstacle) {
+static int isLoop(
+    const Graph *graph, Walls *walls, const int start, const u8 direction, const int obstacle, const u8 *mainWalkVisited
+) {
     // When the obstacle is involved we can't use the pregenerated edge graph, so use the walls instead.
     // The starting position is directly facing the obstacle, so we start with a wall navigation.
     // You could skip this step and pretend we've just hit a wall to the left
@@ -188,16 +190,16 @@ static int isLoop(const Graph *graph, const Walls *walls, const int start, const
     else p = wallsNextCornerUp(walls, p);
 
     if (isCornerOutsideLab(p)) return 0;
-    u16 nextIndex = graph->gridToEdge[p.y][p.x][p.direction];
-    if (nextIndex == EDGE_EXITS_LAB) return 0;
-    Edge edge = graph->edges[nextIndex];
+    u16 nextEdgeIndex = graph->gridToEdge[p.y][p.x][p.direction];
+    if (nextEdgeIndex == EDGE_EXITS_LAB) return 0;
+    Edge edge = graph->edges[nextEdgeIndex];
 
     const u8 obstacleX = obstacle % R;
     const u8 obstacleY = obstacle / R;
     insertIntoSortedArray(walls->horizontal[obstacleY], obstacleX);
     insertIntoSortedArray(walls->vertical[obstacleX], obstacleY);
 
-    u8 visited[EDGE_ARRAY_LENGTH] = {0};
+    u8 visitedEdges[EDGE_ARRAY_LENGTH] = {0};
     u8 foundLoop = 0;
 
     // Edge edge = {p, 0}; // Dummy value
@@ -211,9 +213,9 @@ static int isLoop(const Graph *graph, const Walls *walls, const int start, const
                 p = wallsNextCornerRight(walls, p);
                 if (isCornerOutsideLab(p)) break;
             }
-            nextIndex = graph->gridToEdge[p.y][p.x][p.direction];
-            if (nextIndex == EDGE_EXITS_LAB) break;
-            edge = graph->edges[nextIndex];
+            nextEdgeIndex = graph->gridToEdge[p.y][p.x][p.direction];
+            if (nextEdgeIndex == EDGE_EXITS_LAB) break;
+            edge = graph->edges[nextEdgeIndex];
         } else if (p.x == obstacleX && p.direction == RIGHT && p.y < obstacleY) {
             p = wallsNextCornerDown(walls, p);
             if (isCornerOutsideLab(p)) break;
@@ -221,9 +223,9 @@ static int isLoop(const Graph *graph, const Walls *walls, const int start, const
                 p = wallsNextCornerLeft(walls, p);
                 if (isCornerOutsideLab(p)) break;
             }
-            nextIndex = graph->gridToEdge[p.y][p.x][p.direction];
-            if (nextIndex == EDGE_EXITS_LAB) break;
-            edge = graph->edges[nextIndex];
+            nextEdgeIndex = graph->gridToEdge[p.y][p.x][p.direction];
+            if (nextEdgeIndex == EDGE_EXITS_LAB) break;
+            edge = graph->edges[nextEdgeIndex];
         } else if (p.y == obstacleY && p.direction == DOWN && p.x > obstacleX) {
             p = wallsNextCornerLeft(walls, p);
             if (isCornerOutsideLab(p)) break;
@@ -231,9 +233,9 @@ static int isLoop(const Graph *graph, const Walls *walls, const int start, const
                 p = wallsNextCornerUp(walls, p);
                 if (isCornerOutsideLab(p)) break;
             }
-            nextIndex = graph->gridToEdge[p.y][p.x][p.direction];
-            if (nextIndex == EDGE_EXITS_LAB) break;
-            edge = graph->edges[nextIndex];
+            nextEdgeIndex = graph->gridToEdge[p.y][p.x][p.direction];
+            if (nextEdgeIndex == EDGE_EXITS_LAB) break;
+            edge = graph->edges[nextEdgeIndex];
         } else if (p.y == obstacleY && p.direction == UP && p.x < obstacleX) {
             p = wallsNextCornerRight(walls, p);
             if (isCornerOutsideLab(p)) break;
@@ -241,19 +243,19 @@ static int isLoop(const Graph *graph, const Walls *walls, const int start, const
                 p = wallsNextCornerDown(walls, p);
                 if (isCornerOutsideLab(p)) break;
             }
-            nextIndex = graph->gridToEdge[p.y][p.x][p.direction];
-            if (nextIndex == EDGE_EXITS_LAB) break;
-            edge = graph->edges[nextIndex];
+            nextEdgeIndex = graph->gridToEdge[p.y][p.x][p.direction];
+            if (nextEdgeIndex == EDGE_EXITS_LAB) break;
+            edge = graph->edges[nextEdgeIndex];
         } else {
-            nextIndex = edge.nextIndex;
-            edge = graph->edges[nextIndex];
-            if (nextIndex == EDGE_EXITS_LAB) break;
+            nextEdgeIndex = edge.nextIndex;
+            edge = graph->edges[nextEdgeIndex];
+            if (nextEdgeIndex == EDGE_EXITS_LAB) break;
         }
-        if (visited[nextIndex]) {
+        if (visitedEdges[nextEdgeIndex] || mainWalkVisited[nextEdgeIndex]) {
             foundLoop = 1;
             break;
         }
-        visited[nextIndex] = 1;
+        visitedEdges[nextEdgeIndex] = 1;
     }
 
     removeFromSortedArray(walls->horizontal[obstacleY], obstacleX);
@@ -338,6 +340,7 @@ int countSuccessfulObstructionPositions(const char *ptr, const char *end) {
 
     int count = 0;
     u8 visited[M] = {0};
+    u8 visitedEdges[EDGE_ARRAY_LENGTH] = {0};
 
     const int start = find_next(ptr);
     u8 direction = UP;
@@ -356,11 +359,12 @@ int countSuccessfulObstructionPositions(const char *ptr, const char *end) {
         }
         if (c != '#') {
             if (!visited[next]) {
-                count += isLoop(&graph, &walls, pos, direction, next);
+                count += isLoop(&graph, &walls, pos, direction, next, visitedEdges);
             }
             visited[next] = 1;
             pos = next;
         } else {
+            visitedEdges[graph.gridToEdge[pos / R][pos % R][direction]] = 1;
             direction = (direction + 1) % 4;
             step = steps[direction];
         }
@@ -377,7 +381,7 @@ void six_1() {
     benchmarkFunctionOnFile("../input/6.txt", &countPointsVisitedByGuard, 400000, 4433);
 }
 
-// 0.671 ms
+// 0.565 ms
 void six_2() {
     benchmarkFunctionOnFile("../input/6.txt", &countSuccessfulObstructionPositions, 2000, 1516);
 }
