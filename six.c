@@ -181,38 +181,38 @@ static int isLoop(const Graph *graph, const Walls *walls, const int start, const
         p = wallsNextPointRight(walls, p);
         if (pointOutsideLab(p)) return 0;
         nextIndex = graph->gridToEdge[p.y][p.x][p.direction];
-        if (nextIndex == EDGE_EXITS_LAB) {
-            p = wallsNextPointDown(walls, p);
-            if (pointOutsideLab(p)) return 0;
-            nextIndex = graph->gridToEdge[p.y][p.x][p.direction];
-        }
+        // if (nextIndex == EDGE_EXITS_LAB) {
+        //     p = wallsNextPointDown(walls, p);
+        //     if (pointOutsideLab(p)) return 0;
+        //     nextIndex = graph->gridToEdge[p.y][p.x][p.direction];
+        // }
     } else if (direction == RIGHT) {
         p = wallsNextPointDown(walls, p);
         if (pointOutsideLab(p)) return 0;
         nextIndex = graph->gridToEdge[p.y][p.x][p.direction];
-        if (nextIndex == EDGE_EXITS_LAB) {
-            p = wallsNextPointLeft(walls, p);
-            if (pointOutsideLab(p)) return 0;
-            nextIndex = graph->gridToEdge[p.y][p.x][p.direction];
-        }
+        // if (nextIndex == EDGE_EXITS_LAB) {
+        //     p = wallsNextPointLeft(walls, p);
+        //     if (pointOutsideLab(p)) return 0;
+        //     nextIndex = graph->gridToEdge[p.y][p.x][p.direction];
+        // }
     } else if (direction == DOWN) {
         p = wallsNextPointLeft(walls, p);
         if (pointOutsideLab(p)) return 0;
         nextIndex = graph->gridToEdge[p.y][p.x][p.direction];
-        if (nextIndex == EDGE_EXITS_LAB) {
-            p = wallsNextPointUp(walls, p);
-            if (pointOutsideLab(p)) return 0;
-            nextIndex = graph->gridToEdge[p.y][p.x][p.direction];
-        }
+        // if (nextIndex == EDGE_EXITS_LAB) {
+        //     p = wallsNextPointUp(walls, p);
+        //     if (pointOutsideLab(p)) return 0;
+        //     nextIndex = graph->gridToEdge[p.y][p.x][p.direction];
+        // }
     } else {
         p = wallsNextPointUp(walls, p);
         if (pointOutsideLab(p)) return 0;
         nextIndex = graph->gridToEdge[p.y][p.x][p.direction];
-        if (nextIndex == EDGE_EXITS_LAB) {
-            p = wallsNextPointRight(walls, p);
-            if (pointOutsideLab(p)) return 0;
-            nextIndex = graph->gridToEdge[p.y][p.x][p.direction];
-        }
+        // if (nextIndex == EDGE_EXITS_LAB) {
+        //     p = wallsNextPointRight(walls, p);
+        //     if (pointOutsideLab(p)) return 0;
+        //     nextIndex = graph->gridToEdge[p.y][p.x][p.direction];
+        // }
     }
     if (nextIndex == EDGE_EXITS_LAB) return 0;
     Edge edge = graph->edges[nextIndex];
