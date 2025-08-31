@@ -243,13 +243,23 @@ static int isLoop(const Graph *graph, const Walls *walls, const int start, u8 di
     return foundLoop;
 }
 
+typedef struct {
+    u8 x;
+    u8 y;
+} Coords;
+
 int countSuccessfulObstructionPositions(const char *ptr, const char *end) {
+    Coords wallCoords[1000] = {0};
+    int wallCoordsI = 0;
+
     Walls walls;
     for (int i = 0; i < N; ++i) {
         int countH = 0;
         int countV = 0;
         for (int j = 0; j < N; ++j) {
             if (ptr[i * R + j] == '#') {
+                const Coords c = {j, i};
+                wallCoords[wallCoordsI++] = c;
                 walls.horizontal[i][countH++] = j;
             }
 
@@ -264,51 +274,48 @@ int countSuccessfulObstructionPositions(const char *ptr, const char *end) {
     Graph graph = {0};
 
     int edgeIndex = 1; // 0 is null
-    for (int y = 0; y < N; ++y) {
-        for (int x = 0; x < N; ++x) {
-            if (ptr[y * R + x] != '#') continue;
-            if (y < N - 2 && 0 < x && x < N - 1) {
-                const Point in = {x, y + 1, UP};
-                const Point out = wallsNextPointRight(&walls, in);
-                if (!pointOutsideLab(out)) {
-                    graph.gridToEdge[in.y][in.x][in.direction] = edgeIndex;
-                    const Edge e = {out, EDGE_EXITS_LAB};
-                    graph.edges[edgeIndex++] = e;
-                }
+    for (int i = 0; i < wallCoordsI; ++i) {
+        const u8 x = wallCoords[i].x;
+        const u8 y = wallCoords[i].y;
+
+        if (ptr[y * R + x] != '#') continue;
+        if (y < N - 2 && 0 < x && x < N - 1) {
+            const Point in = {x, y + 1, UP};
+            const Point out = wallsNextPointRight(&walls, in);
+            if (!pointOutsideLab(out)) {
+                graph.gridToEdge[in.y][in.x][in.direction] = edgeIndex;
+                const Edge e = {out, EDGE_EXITS_LAB};
+                graph.edges[edgeIndex++] = e;
             }
-            if (x > 1 && 0 < y && y < N - 1) {
-                const Point in = {x - 1, y, RIGHT};
-                const Point out = wallsNextPointDown(&walls, in);
-                if (!pointOutsideLab(out)) {
-                    graph.gridToEdge[in.y][in.x][in.direction] = edgeIndex;
-                    const Edge e = {out, EDGE_EXITS_LAB};
-                    graph.edges[edgeIndex++] = e;
-                }
+        }
+        if (x > 1 && 0 < y && y < N - 1) {
+            const Point in = {x - 1, y, RIGHT};
+            const Point out = wallsNextPointDown(&walls, in);
+            if (!pointOutsideLab(out)) {
+                graph.gridToEdge[in.y][in.x][in.direction] = edgeIndex;
+                const Edge e = {out, EDGE_EXITS_LAB};
+                graph.edges[edgeIndex++] = e;
             }
-            if (y > 1 && 0 < x && x < N - 1) {
-                const Point in = {x, y - 1, DOWN};
-                const Point out = wallsNextPointLeft(&walls, in);
-                if (!pointOutsideLab(out)) {
-                    graph.gridToEdge[in.y][in.x][in.direction] = edgeIndex;
-                    const Edge e = {out, EDGE_EXITS_LAB};
-                    graph.edges[edgeIndex++] = e;
-                }
+        }
+        if (y > 1 && 0 < x && x < N - 1) {
+            const Point in = {x, y - 1, DOWN};
+            const Point out = wallsNextPointLeft(&walls, in);
+            if (!pointOutsideLab(out)) {
+                graph.gridToEdge[in.y][in.x][in.direction] = edgeIndex;
+                const Edge e = {out, EDGE_EXITS_LAB};
+                graph.edges[edgeIndex++] = e;
             }
-            if (x < N - 2 && 0 < y && y < N - 1) {
-                const Point in = {x + 1, y, LEFT};
-                const Point out = wallsNextPointUp(&walls, in);
-                if (!pointOutsideLab(out)) {
-                    graph.gridToEdge[in.y][in.x][in.direction] = edgeIndex;
-                    const Edge e = {out, EDGE_EXITS_LAB};
-                    graph.edges[edgeIndex++] = e;
-                }
+        }
+        if (x < N - 2 && 0 < y && y < N - 1) {
+            const Point in = {x + 1, y, LEFT};
+            const Point out = wallsNextPointUp(&walls, in);
+            if (!pointOutsideLab(out)) {
+                graph.gridToEdge[in.y][in.x][in.direction] = edgeIndex;
+                const Edge e = {out, EDGE_EXITS_LAB};
+                graph.edges[edgeIndex++] = e;
             }
         }
     }
-    // 2755
-    // 2748
-    // 2732
-    // 2707
 
     // We can't add the nextIndex on first pass since we don't know if there is a next edge or where it is
     for (int i = 1; i < edgeIndex; ++i) {
@@ -347,7 +354,7 @@ int countSuccessfulObstructionPositions(const char *ptr, const char *end) {
     }
 
     return count;
-    return walls.vertical[129][0] == 123 || walls.horizontal[129][0] == 123 ? 0 : 1516;
+    // return graph.edges[1000].nextIndex == 999 ? 0 : 1516;
 }
 
 // 0.004070 ms
@@ -357,7 +364,7 @@ void six_1() {
     benchmarkFunctionOnFile("../input/6.txt", &countPointsVisitedByGuard, 400000, 4433);
 }
 
-// 0.774 ms
+// 0.763 ms
 void six_2() {
     benchmarkFunctionOnFile("../input/6.txt", &countSuccessfulObstructionPositions, 2000, 1516);
 }
