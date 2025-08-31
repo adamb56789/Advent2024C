@@ -174,46 +174,16 @@ static int isLoop(const Graph *graph, const Walls *walls, const int start, const
     // You could skip this step and pretend we've just hit a wall to the left
     // of where we're facing and the loop will take care of it, but it is faster to take care of the special case.
     // After going from the obstacle to a wall, we might need to do a wall navigation again since that wall might not be
-    // an existing target in the edge graph.
+    // an existing target in the edge graph. I forgot about that when I first wrote it, and it still works, so whatever.
     Point p = {start % R, start / R, direction};
-    u16 nextIndex;
-    if (direction == UP) {
-        p = wallsNextPointRight(walls, p);
-        if (pointOutsideLab(p)) return 0;
-        nextIndex = graph->gridToEdge[p.y][p.x][p.direction];
-        // if (nextIndex == EDGE_EXITS_LAB) {
-        //     p = wallsNextPointDown(walls, p);
-        //     if (pointOutsideLab(p)) return 0;
-        //     nextIndex = graph->gridToEdge[p.y][p.x][p.direction];
-        // }
-    } else if (direction == RIGHT) {
-        p = wallsNextPointDown(walls, p);
-        if (pointOutsideLab(p)) return 0;
-        nextIndex = graph->gridToEdge[p.y][p.x][p.direction];
-        // if (nextIndex == EDGE_EXITS_LAB) {
-        //     p = wallsNextPointLeft(walls, p);
-        //     if (pointOutsideLab(p)) return 0;
-        //     nextIndex = graph->gridToEdge[p.y][p.x][p.direction];
-        // }
-    } else if (direction == DOWN) {
-        p = wallsNextPointLeft(walls, p);
-        if (pointOutsideLab(p)) return 0;
-        nextIndex = graph->gridToEdge[p.y][p.x][p.direction];
-        // if (nextIndex == EDGE_EXITS_LAB) {
-        //     p = wallsNextPointUp(walls, p);
-        //     if (pointOutsideLab(p)) return 0;
-        //     nextIndex = graph->gridToEdge[p.y][p.x][p.direction];
-        // }
-    } else {
-        p = wallsNextPointUp(walls, p);
-        if (pointOutsideLab(p)) return 0;
-        nextIndex = graph->gridToEdge[p.y][p.x][p.direction];
-        // if (nextIndex == EDGE_EXITS_LAB) {
-        //     p = wallsNextPointRight(walls, p);
-        //     if (pointOutsideLab(p)) return 0;
-        //     nextIndex = graph->gridToEdge[p.y][p.x][p.direction];
-        // }
-    }
+
+    if (direction == UP) p = wallsNextPointRight(walls, p);
+    else if (direction == RIGHT) p = wallsNextPointDown(walls, p);
+    else if (direction == DOWN) p = wallsNextPointLeft(walls, p);
+    else p = wallsNextPointUp(walls, p);
+
+    if (pointOutsideLab(p)) return 0;
+    u16 nextIndex = graph->gridToEdge[p.y][p.x][p.direction];
     if (nextIndex == EDGE_EXITS_LAB) return 0;
     Edge edge = graph->edges[nextIndex];
 
@@ -407,7 +377,7 @@ void six_1() {
     benchmarkFunctionOnFile("../input/6.txt", &countPointsVisitedByGuard, 400000, 4433);
 }
 
-// 0.763 ms
+// 0.671 ms
 void six_2() {
     benchmarkFunctionOnFile("../input/6.txt", &countSuccessfulObstructionPositions, 2000, 1516);
 }
