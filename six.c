@@ -131,6 +131,17 @@ static u8 getInsertIndex(const u8 *arr, const u8 n) {
     return __builtin_ctz(mask);
 }
 
+static void insertIntoSortedArray(u8 arr[W], const u8 val) {
+    const u8 i = getInsertIndex(arr, val);
+    memmove(&arr[i + 1], &arr[i], (W - 1 - i) * sizeof(u8));
+    arr[i] = val;
+}
+
+static void removeFromSortedArray(u8 arr[W], const u8 val) {
+    const u8 i = getInsertIndex(arr, val) - 1;
+    memmove(&arr[i], &arr[i + 1], (W - 1 - i) * sizeof(u8));
+}
+
 // ReSharper disable CppDFANotInitializedField
 static Corner wallsNextCornerUp(const Walls *walls, const Corner corner) {
     const u8 i = getInsertIndex(walls->vertical[corner.x], corner.y);
@@ -161,17 +172,6 @@ static Corner wallsNextCornerLeft(const Walls *walls, const Corner corner) {
     if (i == 0) return NO_CORNER;
     const Corner result = {walls->horizontal[corner.y][i - 1] + 1, corner.y, LEFT};
     return result;
-}
-
-static void insertIntoSortedArray(u8 arr[W], const u8 val) {
-    const u8 i = getInsertIndex(arr, val);
-    memmove(&arr[i + 1], &arr[i], (W - 1 - i) * sizeof(u8));
-    arr[i] = val;
-}
-
-static void removeFromSortedArray(u8 arr[W], const u8 val) {
-    const u8 i = getInsertIndex(arr, val) - 1;
-    memmove(&arr[i], &arr[i + 1], (W - 1 - i) * sizeof(u8));
 }
 
 static int isLoop(
@@ -373,7 +373,7 @@ int countSuccessfulObstructionPositions(const char *ptr, const char *end) {
     }
 
     return count;
-    // return graph.edges[1000].nextIndex == 999 ? 0 : 1516;
+    return graph.edges[1000].nextIndex == 999 ? 0 : 1516;
 }
 
 // 0.004070 ms
@@ -383,7 +383,7 @@ void six_1() {
     benchmarkFunctionOnFile("../input/6.txt", &countPointsVisitedByGuard, 400000, 4433);
 }
 
-// 0.545 ms
+// 0.509 ms
 void six_2() {
     benchmarkFunctionOnFile("../input/6.txt", &countSuccessfulObstructionPositions, 2000, 1516);
 }
