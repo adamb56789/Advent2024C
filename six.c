@@ -16,7 +16,7 @@
 #define R (N+1)
 #define M N*(N+1)
 // Highest number of walls in one line
-#define W 15
+#define W 14
 #define EDGE_ARRAY_LENGTH 3000
 
 typedef enum {
@@ -251,7 +251,8 @@ static int isLoop(
             edge = graph->edges[nextEdgeIndex];
             if (nextEdgeIndex == EDGE_EXITS_LAB) break;
         }
-        if (visitedEdges[nextEdgeIndex] || mainWalkVisited[nextEdgeIndex]) {
+        // Reusing the main walk visited data finds some loops earlier. In my data 1087/1516 hit the main walk.
+        if (mainWalkVisited[nextEdgeIndex] || visitedEdges[nextEdgeIndex]) {
             foundLoop = 1;
             break;
         }
@@ -381,7 +382,7 @@ void six_1() {
     benchmarkFunctionOnFile("../input/6.txt", &countPointsVisitedByGuard, 400000, 4433);
 }
 
-// 0.565 ms
+// 0.585 ms
 void six_2() {
     benchmarkFunctionOnFile("../input/6.txt", &countSuccessfulObstructionPositions, 2000, 1516);
 }
