@@ -118,19 +118,22 @@ static int isCornerOutsideLab(const Corner corner) {
     return corner.x == NONE;
 }
 
-static u8 insertIndex(const u8 *arr, const u8 n) {
-    u8 i = 0;
-    for (; i < W; ++i) {
-        if (arr[i] == 255 || n <= arr[i]) {
-            break;
-        }
-    }
-    return i;
+/**
+ * Finds the index that n would be inserted into in this sorted array of 16 elements.
+ */
+static u8 getInsertIndex(const u8 *arr, const u8 n) {
+    // add 128 to everything because we don't have unsigned compare on this
+    const __m128i bias = _mm_set1_epi8((char) 0x80);
+    const __m128i needle = _mm_set1_epi8((char) (n ^ 0x80));
+    const __m128i block = _mm_load_si128((__m128i *) arr);
+    const __m128i cmp = _mm_cmpgt_epi8(_mm_xor_si128(block, bias), needle);
+    const int mask = _mm_movemask_epi8(cmp);
+    return __builtin_ctz(mask);
 }
 
 // ReSharper disable CppDFANotInitializedField
 static Corner wallsNextCornerUp(const Walls *walls, const Corner corner) {
-    const u8 i = insertIndex(walls->vertical[corner.x], corner.y);
+    const u8 i = getInsertIndex(walls->vertical[corner.x], corner.y);
     if (i == 0) return NO_CORNER;
     const Corner result = {corner.x, walls->vertical[corner.x][i - 1] + 1, UP};
     return result;
@@ -138,7 +141,7 @@ static Corner wallsNextCornerUp(const Walls *walls, const Corner corner) {
 
 // ReSharper disable CppDFANotInitializedField
 static Corner wallsNextCornerRight(const Walls *walls, const Corner corner) {
-    const u8 i = insertIndex(walls->horizontal[corner.y], corner.x);
+    const u8 i = getInsertIndex(walls->horizontal[corner.y], corner.x);
     if (walls->horizontal[corner.y][i] == 255) return NO_CORNER;
     const Corner result = {walls->horizontal[corner.y][i] - 1, corner.y, RIGHT};
     return result;
@@ -146,7 +149,7 @@ static Corner wallsNextCornerRight(const Walls *walls, const Corner corner) {
 
 // ReSharper disable CppDFANotInitializedField
 static Corner wallsNextCornerDown(const Walls *walls, const Corner corner) {
-    const u8 i = insertIndex(walls->vertical[corner.x], corner.y);
+    const u8 i = getInsertIndex(walls->vertical[corner.x], corner.y);
     if (walls->vertical[corner.x][i] == 255) return NO_CORNER;
     const Corner result = {corner.x, walls->vertical[corner.x][i] - 1, DOWN};
     return result;
@@ -154,7 +157,7 @@ static Corner wallsNextCornerDown(const Walls *walls, const Corner corner) {
 
 // ReSharper disable CppDFANotInitializedField
 static Corner wallsNextCornerLeft(const Walls *walls, const Corner corner) {
-    const u8 i = insertIndex(walls->horizontal[corner.y], corner.x);
+    const u8 i = getInsertIndex(walls->horizontal[corner.y], corner.x);
     if (i == 0) return NO_CORNER;
     const Corner result = {walls->horizontal[corner.y][i - 1] + 1, corner.y, LEFT};
     return result;
@@ -382,7 +385,7 @@ void six_1() {
     benchmarkFunctionOnFile("../input/6.txt", &countPointsVisitedByGuard, 400000, 4433);
 }
 
-// 0.585 ms
+// 0.545 ms
 void six_2() {
     benchmarkFunctionOnFile("../input/6.txt", &countSuccessfulObstructionPositions, 2000, 1516);
 }
