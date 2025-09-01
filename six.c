@@ -164,15 +164,13 @@ static Corner wallsNextCornerLeft(const Walls *walls, const Corner corner) {
 }
 
 static void insertIntoSortedArray(u8 arr[W], const u8 val) {
-    int i = 0;
-    while (i < W && arr[i] < val) ++i;
+    const u8 i = getInsertIndex(arr, val);
     memmove(&arr[i + 1], &arr[i], (W - 1 - i) * sizeof(u8));
     arr[i] = val;
 }
 
 static void removeFromSortedArray(u8 arr[W], const u8 val) {
-    int i = 0;
-    while (i < W && arr[i] != val) ++i;
+    const u8 i = getInsertIndex(arr, val) - 1;
     memmove(&arr[i], &arr[i + 1], (W - 1 - i) * sizeof(u8));
 }
 
