@@ -84,8 +84,7 @@ static int countSetBytes(const u8 visited[]) {
     return count;
 }
 
-static int gridNextWallRight(const char *ptr, const int pos) {
-    const int x = pos % R;
+static int gridNextWallRight(const char *ptr, const int pos, const int x) {
     const int rowStart = pos - x;
     // Start search window at column 2 since the first two columns are unreachable, and it means we can fit everything into 4 blocks
     const char *base = ptr + rowStart + 2;
@@ -119,8 +118,7 @@ static int gridNextWallRight(const char *ptr, const int pos) {
 }
 
 
-static int gridNextWallLeft(const char *ptr, const int pos) {
-    const int x = pos % R;
+static int gridNextWallLeft(const char *ptr, const int pos, const int x) {
     const int rowStart = pos - x;
     const char *base = ptr + rowStart;
 
@@ -161,6 +159,7 @@ int countPointsVisitedByGuard(const char *ptr, const char *end) {
 
     u8 direction = UP; // unsigned makes it do mod 4 with only add+and
     int pos = start;
+    int x = pos % R;
     int step = steps[direction];
     while (1) {
         int next = pos + step;
@@ -178,21 +177,23 @@ int countPointsVisitedByGuard(const char *ptr, const char *end) {
             direction = (direction + 1) % 4;
             // For horizontal collision detection we can use SIMD to find the next wall much faster
             if (direction == RIGHT) {
-                next = gridNextWallRight(ptr, pos);
+                next = gridNextWallRight(ptr, pos, x);
                 if (next == -1) {
                     memset(&visited[pos], 0xFF, N - pos % R);
                     break;
                 }
                 memset(&visited[pos], 0xFF, 1 + next - pos);
+                x += next-pos;
                 pos = next;
                 direction = DOWN;
             } else if (direction == LEFT) {
-                next = gridNextWallLeft(ptr, pos);
+                next = gridNextWallLeft(ptr, pos, x);
                 if (next == -1) {
                     memset(&visited[pos - pos % R], 0xFF, pos % R + 1);
                     break;
                 }
                 memset(&visited[next], 0xFF, 1 + pos - next);
+                x -= pos-next;
                 pos = next;
                 direction = UP;
             }
@@ -485,7 +486,7 @@ int countSuccessfulObstructionPositions(const char *ptr, const char *end) {
     return count;
 }
 
-// 2713 ns
+// 2628 ns
 void six_1() {
     benchmarkFunctionOnFile("../input/6.txt", &countPointsVisitedByGuard, 400000, 4433);
 }
