@@ -84,6 +84,75 @@ static int countSetBytes(const u8 visited[]) {
     return count;
 }
 
+static int gridNextWallRight(const char *ptr, const int pos) {
+    const int x = pos % R;
+    const int rowStart = pos - x;
+    // Start search window at column 2 since the first two columns are unreachable, and it means we can fit everything into 4 blocks
+    const char *base = ptr + rowStart + 2;
+
+    const int scanAreaStart = x + 1;
+    const int relStart = scanAreaStart - 2; // relative index into 0..127
+
+    const int startBlockNumber = relStart / 32;
+    int blockNumber = startBlockNumber;
+    const int startBit = relStart % 32;
+
+    const __m256i needle = _mm256_set1_epi8('#');
+    for (; blockNumber < 4; ++blockNumber) {
+        const __m256i block = _mm256_loadu_si256((__m256i *) (base + 32 * blockNumber));
+        const __m256i cmp = _mm256_cmpeq_epi8(block, needle);
+        int mask = _mm256_movemask_epi8(cmp);
+
+        if (blockNumber == startBlockNumber && startBit > 0) {
+            const int lowMask = (1 << startBit) - 1;
+            mask &= ~lowMask; // ignore bytes left of scanAreaStart in first block
+        }
+
+        if (mask) {
+            const int lsb = __builtin_ctz(mask);
+            // return the cell immediately to the left of the found wall
+            return rowStart + blockNumber * 32 + lsb + 1;
+        }
+    }
+
+    return -1;
+}
+
+
+static int gridNextWallLeft(const char *ptr, const int pos) {
+    const int x = pos % R;
+    const int rowStart = pos - x;
+    const char *base = ptr + rowStart;
+
+    const int scanAreaEnd = x - 1;
+
+    const int startBlockNumber = scanAreaEnd / 32;
+    int blockNumber = startBlockNumber;
+    const int endBit = scanAreaEnd % 32;
+
+    const __m256i needle = _mm256_set1_epi8('#');
+    for (; blockNumber >= 0; --blockNumber) {
+        const __m256i block = _mm256_loadu_si256((__m256i *) (base + 32 * blockNumber));
+        const __m256i cmp = _mm256_cmpeq_epi8(block, needle);
+        int mask = _mm256_movemask_epi8(cmp);
+
+        if (blockNumber == startBlockNumber && endBit < 31) {
+            // mask out bytes to the right of pos-1
+            const int keep = (1 << (endBit + 1)) - 1;
+            mask &= keep;
+        }
+
+        if (mask) {
+            const int msb = 31 - __builtin_clz(mask);
+            // Return 1 to the right of what we found (where the guard is after hitting the wall)
+            return rowStart + blockNumber * 32 + msb + 1;
+        }
+    }
+
+    return -1;
+}
+
+
 int countPointsVisitedByGuard(const char *ptr, const char *end) {
     u8 visited[M + 32] = {0};
 
@@ -94,9 +163,9 @@ int countPointsVisitedByGuard(const char *ptr, const char *end) {
     int pos = start;
     int step = steps[direction];
     while (1) {
-        const int next = pos + step;
+        int next = pos + step;
 
-        if ((unsigned) next >= M) break;
+        if (next >= M) break;
 
         const char c = ptr[next];
         if (c == '\n') {
@@ -107,6 +176,26 @@ int countPointsVisitedByGuard(const char *ptr, const char *end) {
             pos = next;
         } else {
             direction = (direction + 1) % 4;
+            // For horizontal collision detection we can use SIMD to find the next wall much faster
+            if (direction == RIGHT) {
+                next = gridNextWallRight(ptr, pos);
+                if (next == -1) {
+                    memset(&visited[pos], 0xFF, N - pos % R);
+                    break;
+                }
+                memset(&visited[pos], 0xFF, 1 + next - pos);
+                pos = next;
+                direction = DOWN;
+            } else if (direction == LEFT) {
+                next = gridNextWallLeft(ptr, pos);
+                if (next == -1) {
+                    memset(&visited[pos - pos % R], 0xFF, pos % R + 1);
+                    break;
+                }
+                memset(&visited[next], 0xFF, 1 + pos - next);
+                pos = next;
+                direction = UP;
+            }
             step = steps[direction];
         }
     }
@@ -195,7 +284,6 @@ static int isLoop(
     u8 visitedEdges[EDGE_ARRAY_LENGTH] = {0};
     u8 foundLoop = 0;
 
-    // Edge edge = {p, 0}; // Dummy value
     while (1) {
         c = edge.corner;
         if (c.x == obstacleX && c.direction == LEFT && c.y > obstacleY) {
@@ -397,12 +485,12 @@ int countSuccessfulObstructionPositions(const char *ptr, const char *end) {
     return count;
 }
 
-// 0.004070 ms
-// 4070 ns *4.3 GHz = 17050 cycles
-// Input file is 17029 bytes
+// 2713 ns
 void six_1() {
     benchmarkFunctionOnFile("../input/6.txt", &countPointsVisitedByGuard, 400000, 4433);
 }
+
+// TODO try full bitmask solution
 
 // 0.433 ms
 void six_2() {
