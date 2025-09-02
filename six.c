@@ -352,8 +352,7 @@ int countSuccessfulObstructionPositions(const char *ptr, const char *end) {
         int countV = 0;
         for (int j = 0; j < N; ++j) {
             if (ptr[i * R + j] == '#') {
-                const Coords c = {j, i};
-                wallCoords[wallCoordsI++] = c;
+                wallCoords[wallCoordsI++] = (Coords){j, i};
                 walls.horizontal[i][countH++] = j;
             }
 
@@ -367,7 +366,7 @@ int countSuccessfulObstructionPositions(const char *ptr, const char *end) {
 
     Graph graph = {0};
 
-    int edgeIndex = 1; // 0 is null
+    int edgeIndex = 1; // 0 is EDGE_EXITS_LAB
     for (int i = 0; i < wallCoordsI; ++i) {
         const u8 x = wallCoords[i].x;
         const u8 y = wallCoords[i].y;
@@ -378,8 +377,7 @@ int countSuccessfulObstructionPositions(const char *ptr, const char *end) {
             const Corner out = wallsNextCornerRight(&walls, in);
             if (!isCornerOutsideLab(out)) {
                 graph.gridToEdge[in.y][in.x][in.direction] = edgeIndex;
-                const Edge e = {out, EDGE_EXITS_LAB};
-                graph.edges[edgeIndex++] = e;
+                graph.edges[edgeIndex++] = (Edge){out, EDGE_EXITS_LAB};
             }
         }
         if (x > 1 && 0 < y && y < N - 1) {
@@ -387,8 +385,7 @@ int countSuccessfulObstructionPositions(const char *ptr, const char *end) {
             const Corner out = wallsNextCornerDown(&walls, in);
             if (!isCornerOutsideLab(out)) {
                 graph.gridToEdge[in.y][in.x][in.direction] = edgeIndex;
-                const Edge e = {out, EDGE_EXITS_LAB};
-                graph.edges[edgeIndex++] = e;
+                graph.edges[edgeIndex++] = (Edge){out, EDGE_EXITS_LAB};
             }
         }
         if (y > 1 && 0 < x && x < N - 1) {
@@ -396,8 +393,7 @@ int countSuccessfulObstructionPositions(const char *ptr, const char *end) {
             const Corner out = wallsNextCornerLeft(&walls, in);
             if (!isCornerOutsideLab(out)) {
                 graph.gridToEdge[in.y][in.x][in.direction] = edgeIndex;
-                const Edge e = {out, EDGE_EXITS_LAB};
-                graph.edges[edgeIndex++] = e;
+                graph.edges[edgeIndex++] = (Edge){out, EDGE_EXITS_LAB};
             }
         }
         if (x < N - 2 && 0 < y && y < N - 1) {
@@ -405,8 +401,7 @@ int countSuccessfulObstructionPositions(const char *ptr, const char *end) {
             const Corner out = wallsNextCornerUp(&walls, in);
             if (!isCornerOutsideLab(out)) {
                 graph.gridToEdge[in.y][in.x][in.direction] = edgeIndex;
-                const Edge e = {out, EDGE_EXITS_LAB};
-                graph.edges[edgeIndex++] = e;
+                graph.edges[edgeIndex++] = (Edge){out, EDGE_EXITS_LAB};
             }
         }
     }
@@ -452,14 +447,14 @@ int countSuccessfulObstructionPositions(const char *ptr, const char *end) {
     return count;
 }
 
-// 2628 ns
+// 2.63 us
 void six_1() {
     benchmarkFunctionOnFile("../input/6.txt", &countPointsVisitedByGuard, 400000, 4433);
 }
 
 // TODO try full bitmask solution
 
-// 0.440 ms
+// 440 us
 void six_2() {
-    benchmarkFunctionOnFile("../input/6.txt", &countSuccessfulObstructionPositions, 2000, 1516);
+    benchmarkFunctionOnFile("../input/6.txt", &countSuccessfulObstructionPositions, 4000, 1516);
 }
