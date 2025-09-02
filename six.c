@@ -92,9 +92,9 @@ static int gridNextWallRight(const char *ptr, const int pos, const int x) {
     const int scanAreaStart = x + 1;
     const int relStart = scanAreaStart - 2; // relative index into 0..127
 
-    const int startBlockNumber = relStart / 32;
+    const int startBlockNumber = relStart >> 5;
     int blockNumber = startBlockNumber;
-    const int startBit = relStart % 32;
+    const int startBit = relStart & 31;
 
     const __m256i needle = _mm256_set1_epi8('#');
     for (; blockNumber < 4; ++blockNumber) {
@@ -110,7 +110,7 @@ static int gridNextWallRight(const char *ptr, const int pos, const int x) {
         if (mask) {
             const int lsb = __builtin_ctz(mask);
             // return the cell immediately to the left of the found wall
-            return rowStart + blockNumber * 32 + lsb + 1;
+            return rowStart + (blockNumber << 5) + lsb + 1;
         }
     }
 
@@ -124,9 +124,9 @@ static int gridNextWallLeft(const char *ptr, const int pos, const int x) {
 
     const int scanAreaEnd = x - 1;
 
-    const int startBlockNumber = scanAreaEnd / 32;
+    const int startBlockNumber = scanAreaEnd >> 5;
     int blockNumber = startBlockNumber;
-    const int endBit = scanAreaEnd % 32;
+    const int endBit = scanAreaEnd & 31;
 
     const __m256i needle = _mm256_set1_epi8('#');
     for (; blockNumber >= 0; --blockNumber) {
@@ -143,7 +143,7 @@ static int gridNextWallLeft(const char *ptr, const int pos, const int x) {
         if (mask) {
             const int msb = 31 - __builtin_clz(mask);
             // Return 1 to the right of what we found (where the guard is after hitting the wall)
-            return rowStart + blockNumber * 32 + msb + 1;
+            return rowStart + (blockNumber << 5) + msb + 1;
         }
     }
 
