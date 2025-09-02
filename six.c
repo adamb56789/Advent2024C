@@ -183,7 +183,7 @@ int countPointsVisitedByGuard(const char *ptr, const char *end) {
                     break;
                 }
                 memset(&visited[pos], 0xFF, 1 + next - pos);
-                x += next-pos;
+                x += next - pos;
                 pos = next;
                 direction = DOWN;
             } else if (direction == LEFT) {
@@ -193,7 +193,7 @@ int countPointsVisitedByGuard(const char *ptr, const char *end) {
                     break;
                 }
                 memset(&visited[next], 0xFF, 1 + pos - next);
-                x -= pos-next;
+                x -= pos - next;
                 pos = next;
                 direction = UP;
             }
@@ -221,37 +221,35 @@ static u8 getInsertIndex(const u8 *arr, const u8 n) {
     return __builtin_ctz(mask);
 }
 
-// ReSharper disable CppDFANotInitializedField
 static Corner wallsNextCornerUp(const Walls *walls, const Corner corner) {
     const u8 i = getInsertIndex(walls->vertical[corner.x], corner.y);
     if (i == 0) return NO_CORNER;
-    const Corner result = {corner.x, walls->vertical[corner.x][i - 1] + 1, UP};
-    return result;
+    return (Corner){corner.x, walls->vertical[corner.x][i - 1] + 1, UP};
 }
 
-// ReSharper disable CppDFANotInitializedField
 static Corner wallsNextCornerRight(const Walls *walls, const Corner corner) {
     const u8 i = getInsertIndex(walls->horizontal[corner.y], corner.x);
     if (walls->horizontal[corner.y][i] == 255) return NO_CORNER;
-    const Corner result = {walls->horizontal[corner.y][i] - 1, corner.y, RIGHT};
-    return result;
+    return (Corner){walls->horizontal[corner.y][i] - 1, corner.y, RIGHT};
 }
 
-// ReSharper disable CppDFANotInitializedField
 static Corner wallsNextCornerDown(const Walls *walls, const Corner corner) {
     const u8 i = getInsertIndex(walls->vertical[corner.x], corner.y);
     if (walls->vertical[corner.x][i] == 255) return NO_CORNER;
-    const Corner result = {corner.x, walls->vertical[corner.x][i] - 1, DOWN};
-    return result;
+    return (Corner){corner.x, walls->vertical[corner.x][i] - 1, DOWN};
 }
 
-// ReSharper disable CppDFANotInitializedField
 static Corner wallsNextCornerLeft(const Walls *walls, const Corner corner) {
     const u8 i = getInsertIndex(walls->horizontal[corner.y], corner.x);
     if (i == 0) return NO_CORNER;
-    const Corner result = {walls->horizontal[corner.y][i - 1] + 1, corner.y, LEFT};
-    return result;
+    return (Corner){walls->horizontal[corner.y][i - 1] + 1, corner.y, LEFT};
 }
+
+static u8 checkObstacleHit(const u8 *line, const u8 obstacleCoord, const u8 otherCoord, u8 *cachedInsertIndex) {
+    if (*cachedInsertIndex == NONE) *cachedInsertIndex = getInsertIndex(line, obstacleCoord);
+    return getInsertIndex(line, otherCoord) == *cachedInsertIndex;
+}
+
 
 static int isLoop(
     const Graph *graph, Walls *walls, const int start, const u8 direction, const int obstacle, const u8 *mainWalkVisited
@@ -288,83 +286,51 @@ static int isLoop(
     while (1) {
         c = edge.corner;
         if (c.x == obstacleX && c.direction == LEFT && c.y > obstacleY) {
-            obstacleYInsertIndex = obstacleYInsertIndex == NONE
-                                       ? getInsertIndex(walls->vertical[obstacleX], obstacleY)
-                                       : obstacleYInsertIndex;
-            const u8 insertIndex = getInsertIndex(walls->vertical[c.x], c.y);
-            // If our position and the position of the obstacle would be the same in a sorted array, we and the obstacle
-            // are adjacent. We know we are facing it because of the c.y > obstacleY, so we have collided.
-            if (insertIndex == obstacleYInsertIndex) {
-                const Corner obstacleCorner = {c.x, obstacleY + 1, UP};
+            if (checkObstacleHit(walls->vertical[c.x], obstacleY, c.y, &obstacleYInsertIndex)) {
                 // Corners on the obstacle aren't in the graph, so we need to do another wall navigation
-                c = wallsNextCornerRight(walls, obstacleCorner);
-                if (isCornerOutsideLab(c)) break;
+                c = wallsNextCornerRight(walls, (Corner){c.x, obstacleY + 1, UP});
             } else {
                 // It might look like this wallsNextCornerUp unnecessarily recalculates the insert index. But the compiler
                 // output is the same either way.
                 c = wallsNextCornerUp(walls, c);
-                if (isCornerOutsideLab(c)) break;
             }
+            if (isCornerOutsideLab(c)) break;
 
             nextEdgeIndex = graph->gridToEdge[c.y][c.x][c.direction];
-            if (nextEdgeIndex == EDGE_EXITS_LAB) break;
-            edge = graph->edges[nextEdgeIndex];
         } else if (c.x == obstacleX && c.direction == RIGHT && c.y < obstacleY) {
-            obstacleYInsertIndex = obstacleYInsertIndex == NONE
-                                       ? getInsertIndex(walls->vertical[obstacleX], obstacleY)
-                                       : obstacleYInsertIndex;
-            const u8 insertIndex = getInsertIndex(walls->vertical[c.x], c.y);
-            if (insertIndex == obstacleYInsertIndex) {
-                const Corner obstacleCorner = {c.x, obstacleY - 1, DOWN};
-                c = wallsNextCornerLeft(walls, obstacleCorner);
-                if (isCornerOutsideLab(c)) break;
+            if (checkObstacleHit(walls->vertical[c.x], obstacleY, c.y, &obstacleYInsertIndex)) {
+                c = wallsNextCornerLeft(walls, (Corner){c.x, obstacleY - 1, DOWN});
             } else {
                 c = wallsNextCornerDown(walls, c);
-                if (isCornerOutsideLab(c)) break;
             }
+            if (isCornerOutsideLab(c)) break;
 
             nextEdgeIndex = graph->gridToEdge[c.y][c.x][c.direction];
-            if (nextEdgeIndex == EDGE_EXITS_LAB) break;
-            edge = graph->edges[nextEdgeIndex];
         } else if (c.y == obstacleY && c.direction == DOWN && c.x > obstacleX) {
-            obstacleXInsertIndex = obstacleXInsertIndex == NONE
-                                       ? getInsertIndex(walls->horizontal[obstacleY], obstacleX)
-                                       : obstacleXInsertIndex;
-            const u8 insertIndex = getInsertIndex(walls->horizontal[c.y], c.x);
-            if (insertIndex == obstacleXInsertIndex) {
-                const Corner obstacleCorner = {obstacleX + 1, c.y, LEFT};
-                c = wallsNextCornerUp(walls, obstacleCorner);
-                if (isCornerOutsideLab(c)) break;
+            if (checkObstacleHit(walls->horizontal[c.y], obstacleX, c.x, &obstacleXInsertIndex)) {
+                c = wallsNextCornerUp(walls, (Corner){obstacleX + 1, c.y, LEFT});
             } else {
                 c = wallsNextCornerLeft(walls, c);
-                if (isCornerOutsideLab(c)) break;
             }
+            if (isCornerOutsideLab(c)) break;
 
             nextEdgeIndex = graph->gridToEdge[c.y][c.x][c.direction];
-            if (nextEdgeIndex == EDGE_EXITS_LAB) break;
-            edge = graph->edges[nextEdgeIndex];
         } else if (c.y == obstacleY && c.direction == UP && c.x < obstacleX) {
-            obstacleXInsertIndex = obstacleXInsertIndex == NONE
-                                       ? getInsertIndex(walls->horizontal[obstacleY], obstacleX)
-                                       : obstacleXInsertIndex;
-            const u8 insertIndex = getInsertIndex(walls->horizontal[c.y], c.x);
-            if (insertIndex == obstacleXInsertIndex) {
-                const Corner obstacleCorner = {obstacleX - 1, c.y, RIGHT};
-                c = wallsNextCornerDown(walls, obstacleCorner);
-                if (isCornerOutsideLab(c)) break;
+            if (checkObstacleHit(walls->horizontal[c.y], obstacleX, c.x, &obstacleXInsertIndex)) {
+                c = wallsNextCornerDown(walls, (Corner){obstacleX - 1, c.y, RIGHT});
             } else {
                 c = wallsNextCornerRight(walls, c);
-                if (isCornerOutsideLab(c)) break;
             }
+            if (isCornerOutsideLab(c)) break;
 
             nextEdgeIndex = graph->gridToEdge[c.y][c.x][c.direction];
-            if (nextEdgeIndex == EDGE_EXITS_LAB) break;
-            edge = graph->edges[nextEdgeIndex];
         } else {
             nextEdgeIndex = edge.nextIndex;
-            edge = graph->edges[nextEdgeIndex];
-            if (nextEdgeIndex == EDGE_EXITS_LAB) break;
         }
+
+        edge = graph->edges[nextEdgeIndex];
+        if (nextEdgeIndex == EDGE_EXITS_LAB) break;
+
         // Reusing the main walk visited data finds some loops earlier. In my data 1087/1516 hit the main walk.
         if (mainWalkVisited[nextEdgeIndex] || visitedEdges[nextEdgeIndex]) {
             foundLoop = 1;
@@ -493,7 +459,7 @@ void six_1() {
 
 // TODO try full bitmask solution
 
-// 0.433 ms
+// 0.440 ms
 void six_2() {
     benchmarkFunctionOnFile("../input/6.txt", &countSuccessfulObstructionPositions, 2000, 1516);
 }
