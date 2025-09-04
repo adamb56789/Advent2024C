@@ -22,5 +22,6 @@ add_executable(Advent2024C main.c
         two.c
         seven.c
         seven.h
-        lib/libdivide.h
+        thpool.c
+        thpool.h
 )
