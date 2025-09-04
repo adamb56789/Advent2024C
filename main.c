@@ -11,7 +11,7 @@
 int magicSearch();
 
 int main(void) {
-    six_2();
+    six_1();
 }
 
 #define TABLE_BITS 10

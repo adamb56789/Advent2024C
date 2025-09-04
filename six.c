@@ -500,14 +500,14 @@ int countSuccessfulObstructionPositions(const char *ptr, const char *end) {
     return atomicCounter;
 }
 
-// 2.63 us
+// 2.46 us
 void six_1() {
     benchmarkFunctionOnFile("../input/6.txt", &countPointsVisitedByGuard, 400000, 4433);
 }
 
 
 // 440 us single-threaded
-// 164 us with the thread pool but no main walk visited corner reuse
+// 156 us with the thread pool but no main walk visited corner reuse
 void six_2() {
     pool = thpool_init(THREADS);
     benchmarkFunctionOnFile("../input/6.txt", &countSuccessfulObstructionPositions, 10000, 1516);
