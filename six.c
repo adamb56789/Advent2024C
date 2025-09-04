@@ -504,7 +504,7 @@ void six_1() {
 
 
 // 440 us single-threaded
-// 164 us with the thread pool
+// 164 us with the thread pool but no main walk visited corner reuse
 void six_2() {
     pool = thpool_init(THREADS);
     benchmarkFunctionOnFile("../input/6.txt", &countSuccessfulObstructionPositions, 10000, 1516);
