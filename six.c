@@ -450,6 +450,11 @@ int countSuccessfulObstructionPositions(const char *ptr, const char *end) {
     atomicCounter = 0;
 
     IsLoopTaskArgs batches[BATCHES] = {0};
+    for (int i = 0; i < BATCHES; ++i) {
+        batches[i].graph = &graph;
+        batches[i].walls = &walls;
+    }
+
     int currentBatch = 0;
     int indexInBatch = 0;
 
@@ -466,8 +471,6 @@ int countSuccessfulObstructionPositions(const char *ptr, const char *end) {
         }
         if (c != '#') {
             if (!visited[next]) {
-                batches[currentBatch].graph = &graph;
-                batches[currentBatch].walls = &walls;
                 batches[currentBatch].starts[indexInBatch] = pos;
                 batches[currentBatch].directions[indexInBatch] = direction;
                 batches[currentBatch].obstacles[indexInBatch] = next;
