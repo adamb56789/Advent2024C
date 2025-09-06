@@ -260,7 +260,9 @@ static u8 checkObstacleHit(const u8 *line, const u8 obstacleCoord, const u8 othe
 }
 
 
-static int isLoop(const Graph *graph, const Walls *walls, const int start, const u8 direction, const int obstacle) {
+static int isLoop(
+    const Graph *graph, const Walls *walls, const u16 start, const u8 direction, const u16 obstacle, const u8 mainWalkVisitedEdges[EDGE_ARRAY_LENGTH]
+    ) {
     // When the obstacle is involved we can't use the pregenerated edge graph, so use the walls instead.
     // The starting position is directly facing the obstacle, so we start with a wall navigation.
     // You could skip this step and pretend we've just hit a wall to the left
@@ -338,8 +340,7 @@ static int isLoop(const Graph *graph, const Walls *walls, const int start, const
         edge = graph->edges[nextEdgeIndex];
         if (nextEdgeIndex == EDGE_EXITS_LAB) break;
 
-        // Reusing the main walk visited data finds some loops earlier. In my data 1087/1516 hit the main walk.
-        if (visitedEdges[nextEdgeIndex]) {
+        if (mainWalkVisitedEdges[nextEdgeIndex] || visitedEdges[nextEdgeIndex]) {
             foundLoop = 1;
             break;
         }
@@ -352,9 +353,11 @@ static int isLoop(const Graph *graph, const Walls *walls, const int start, const
 typedef struct {
     const Graph *graph;
     Walls *walls;
-    int starts[BATCH_SIZE];
-    uint8_t directions[BATCH_SIZE];
-    int obstacles[BATCH_SIZE];
+    u16 starts[BATCH_SIZE];
+    u8 directions[BATCH_SIZE];
+    u16 obstacles[BATCH_SIZE];
+    // Visited edges of the main walk at the start of this batch
+    u8 mainWalkVisitedEdges[EDGE_ARRAY_LENGTH];
     int count;
 } IsLoopTaskArgs;
 
@@ -364,7 +367,7 @@ void isLoopTask(const void *arg) {
     const IsLoopTaskArgs *task = arg;
     int sum = 0;
     for (int i = 0; i < task->count; ++i) {
-        sum += isLoop(task->graph, task->walls, task->starts[i], task->directions[i], task->obstacles[i]);
+        sum += isLoop(task->graph, task->walls, task->starts[i], task->directions[i], task->obstacles[i], task->mainWalkVisitedEdges);
     }
     atomic_fetch_add(&atomicCounter, sum);
 }
@@ -442,6 +445,7 @@ int countSuccessfulObstructionPositions(const char *ptr, const char *end) {
     }
 
     u8 visited[M] = {0};
+    u8 visitedEdges[EDGE_ARRAY_LENGTH] = {0};
 
     const int start = find_next(ptr);
     u8 direction = UP;
@@ -482,11 +486,13 @@ int countSuccessfulObstructionPositions(const char *ptr, const char *end) {
                     thpool_add_work(pool, isLoopTask, &batches[currentBatch]);
                     currentBatch++;
                     indexInBatch = 0;
+                    memcpy(batches[currentBatch].mainWalkVisitedEdges, visitedEdges, sizeof(visitedEdges));
                 }
             }
             visited[next] = 1;
             pos = next;
         } else {
+            visitedEdges[graph.gridToEdge[pos / R][pos % R][direction]] = 1;
             direction = (direction + 1) % 4;
             step = steps[direction];
         }
@@ -505,9 +511,12 @@ void six_1() {
     benchmarkFunctionOnFile("../input/6.txt", &countPointsVisitedByGuard, 400000, 4433);
 }
 
+// TODO batched main visited
+// TODO retime single-threaded with O2
+// TODO try manual threads
 
 // 440 us single-threaded
-// 156 us with the thread pool but no main walk visited corner reuse
+// 152 us with the thread pool but no main walk visited corner reuse
 void six_2() {
     pool = thpool_init(THREADS);
     benchmarkFunctionOnFile("../input/6.txt", &countSuccessfulObstructionPositions, 10000, 1516);
