@@ -515,9 +515,10 @@ void six_1() {
 
 // TODO retime single-threaded with O2
 // TODO try manual threads
+// TODO removing the conversion from pos to x y coords
 
 // 440 us single-threaded
-// 152 us with the thread pool
+// 150 us with the thread pool
 void six_2() {
     pool = thpool_init(THREADS);
     benchmarkFunctionOnFile("../input/6.txt", &countSuccessfulObstructionPositions, 10000, 1516);
