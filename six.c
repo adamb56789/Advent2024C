@@ -513,10 +513,6 @@ void six_1() {
     benchmarkFunctionOnFile("../input/6.txt", &countPointsVisitedByGuard, 400000, 4433);
 }
 
-// TODO retime single-threaded with O2
-// TODO try manual threads
-// TODO removing the conversion from pos to x y coords
-
 // 440 us single-threaded
 // 150 us with the thread pool
 void six_2() {
@@ -524,3 +520,8 @@ void six_2() {
     benchmarkFunctionOnFile("../input/6.txt", &countSuccessfulObstructionPositions, 10000, 1516);
     thpool_destroy(pool);
 }
+
+/* Non-exhaustive list of things that didn't make it faster
+ * - Using an array of structs instead of struct of arrays to batch arguments (1 us slower).
+ * - Calculating the obstacle position in isLoop instead of passing it in
+ */
