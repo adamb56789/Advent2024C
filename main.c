@@ -1,5 +1,6 @@
 #include <time.h>
 
+#include "eight.h"
 #include "five.h"
 #include "one.h"
 #include "two.h"
@@ -11,7 +12,7 @@
 int magicSearch();
 
 int main(void) {
-    six_2();
+    eight_1();
 }
 
 #define TABLE_BITS 10

@@ -3,7 +3,7 @@ project(Advent2024C C)
 
 set(CMAKE_C_STANDARD 99)
 
-set(CMAKE_C_FLAGS_RELEASE "-O2 -funroll-loops -g -fno-verbose-asm -masm=intel -march=native")
+set(CMAKE_C_FLAGS_RELEASE "-O2 -fno-verbose-asm -masm=intel -march=native")
 
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -march=native")
 
@@ -23,4 +23,6 @@ add_executable(Advent2024C main.c
         seven.h
         thpool.c
         thpool.h
+        eight.c
+        eight.h
 )
