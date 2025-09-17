@@ -12,7 +12,7 @@
 int magicSearch();
 
 int main(void) {
-    eight_2();
+    eight_1();
 }
 
 #define TABLE_BITS 10

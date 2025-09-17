@@ -4,8 +4,6 @@
 
 #include "eight.h"
 
-#include <assert.h>
-
 #include "file-utils.h"
 
 #include <stdint.h>
@@ -47,6 +45,8 @@ static void tryAddAntinode(u8 antinodes[N][N], const Point a, const Point b) {
 }
 
 int countAntinodes(const char *ptr, const char *end) {
+    asm(".p2align 4"); // It goes 0.5 us faster with this IDEK
+
     // 0-9 + A-Z + a-z = 62, 4 is the most of any you can find
     PointList antennaLists[62] = {0};
 
@@ -74,7 +74,6 @@ int countAntinodes(const char *ptr, const char *end) {
 
     for (int i = 0; i < 62; ++i) {
         const PointList list = antennaLists[i];
-        assert(list.length == 0 || list.length == 3 || list.length == 4);
 
         for (int j = 1; j < list.length; ++j) {
             const Point a = list.data[j];
@@ -111,6 +110,8 @@ static void tryAddHarmonicAntinode(u8 antinodes[N][N], const Point a, const Poin
 }
 
 int countHarmonicAntinodes(const char *ptr, const char *end) {
+    asm(".p2align 5"); // It goes 0.6 us faster with this IDEK
+
     // 0-9 + A-Z + a-z = 62, 4 is the most of any you can find
     PointList antennaLists[62] = {0};
 
@@ -140,7 +141,6 @@ int countHarmonicAntinodes(const char *ptr, const char *end) {
 
     for (int i = 0; i < 62; ++i) {
         const PointList list = antennaLists[i];
-        assert(list.length == 0 || list.length == 3 || list.length == 4);
 
         for (int j = 1; j < list.length; ++j) {
             const Point a = list.data[j];
@@ -155,12 +155,12 @@ int countHarmonicAntinodes(const char *ptr, const char *end) {
     return countSetBytes(antinodes);
 }
 
-// 2.02 us
+// 1.55 us
 void eight_1() {
     benchmarkFunctionOnFile("../input/8.txt", &countAntinodes, 1000000, 269);
 }
 
-// 2.78 us
+// 2.15 us
 void eight_2() {
     benchmarkFunctionOnFile("../input/8.txt", &countHarmonicAntinodes, 1000000, 949);
 }
