@@ -42,7 +42,7 @@ static void tryAddAntinode(u8 antinodes[N][N], const Point a, const Point b) {
     const u8 x = 2 * a.x - b.x;
     const u8 y = 2 * a.y - b.y;
     if (x < N && y < N) {
-        antinodes[y][x] = 0xFF;
+        antinodes[x][y] = 0xFF;
     }
 }
 
@@ -70,7 +70,7 @@ int countAntinodes(const char *ptr, const char *end) {
     }
 
     // Add an extra row on the end cause that's easier than updating countSetBytes to handle the trailing bytes
-    u8 antinodes[N+1][N] = {0};
+    u8 antinodes[N + 1][N] = {0};
 
     for (int i = 0; i < 62; ++i) {
         const PointList list = antennaLists[i];
@@ -88,7 +88,7 @@ int countAntinodes(const char *ptr, const char *end) {
 
     // for (int i = 0; i < N; ++i) {
     //     for (int j = 0; j < N; ++j) {
-    //         if (antinodes[j][i]) {
+    //         if (antinodes[i][j]) {
     //             printf("#");
     //         } else {
     //             printf("%c", ptr[i * R + j]);
@@ -99,14 +99,23 @@ int countAntinodes(const char *ptr, const char *end) {
     return countSetBytes(antinodes);
 }
 
-// 2.02 us
-void eight_1() {
-    benchmarkFunctionOnFile("../input/8.txt", &countAntinodes, 1000000, 269);
+static void tryAddHarmonicAntinode(u8 antinodes[N][N], const Point a, const Point b) {
+    u8 x = 2 * a.x - b.x;
+    u8 y = 2 * a.y - b.y;
+    while (x < N && y < N) {
+        antinodes[y][x] = 0xFF;
+
+        x += a.x - b.x;
+        y += a.y - b.y;
+    }
 }
 
-int countAntinodesHarmonics(const char *ptr, const char *end) {
+int countHarmonicAntinodes(const char *ptr, const char *end) {
     // 0-9 + A-Z + a-z = 62, 4 is the most of any you can find
     PointList antennaLists[62] = {0};
+
+    // Add an extra row on the end cause that's easier than updating countSetBytes to handle the trailing bytes
+    u8 antinodes[N + 1][N] = {0};
 
     for (int i = 0; i < N; ++i) {
         for (int j = 0; j < N; ++j) {
@@ -123,12 +132,11 @@ int countAntinodesHarmonics(const char *ptr, const char *end) {
                 const Point p = {j, i};
                 antennaLists[charIndex].data[antennaLists[charIndex].length] = p;
                 antennaLists[charIndex].length++;
+
+                antinodes[p.y][p.x] = 0xFF;
             }
         }
     }
-
-    // Add an extra row on the end cause that's easier than updating countSetBytes to handle the trailing bytes
-    u8 antinodes[N+1][N] = {0};
 
     for (int i = 0; i < 62; ++i) {
         const PointList list = antennaLists[i];
@@ -138,25 +146,21 @@ int countAntinodesHarmonics(const char *ptr, const char *end) {
             const Point a = list.data[j];
             for (int k = j - 1; k >= 0; --k) {
                 const Point b = list.data[k];
-                tryAddAntinode(antinodes, a, b);
-                tryAddAntinode(antinodes, b, a);
+                tryAddHarmonicAntinode(antinodes, a, b);
+                tryAddHarmonicAntinode(antinodes, b, a);
             }
         }
     }
 
-    // for (int i = 0; i < N; ++i) {
-    //     for (int j = 0; j < N; ++j) {
-    //         if (antinodes[j][i]) {
-    //             printf("#");
-    //         } else {
-    //             printf("%c", ptr[i * R + j]);
-    //         }
-    //     }
-    //     printf("\n");
-    // }
     return countSetBytes(antinodes);
 }
 
+// 2.02 us
+void eight_1() {
+    benchmarkFunctionOnFile("../input/8.txt", &countAntinodes, 1000000, 269);
+}
+
+// 2.78 us
 void eight_2() {
-    runFunctionOnFile("../input/8_small.txt", &countAntinodesHarmonics);
+    benchmarkFunctionOnFile("../input/8.txt", &countHarmonicAntinodes, 1000000, 949);
 }
