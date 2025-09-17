@@ -45,8 +45,6 @@ static void tryAddAntinode(u8 antinodes[N][N], const Point a, const Point b) {
 }
 
 int countAntinodes(const char *ptr, const char *end) {
-    asm(".p2align 4"); // It goes 0.5 us faster with this IDEK
-
     // 0-9 + A-Z + a-z = 62, 4 is the most of any you can find
     PointList antennaLists[62] = {0};
 
@@ -110,7 +108,7 @@ static void tryAddHarmonicAntinode(u8 antinodes[N][N], const Point a, const Poin
 }
 
 int countHarmonicAntinodes(const char *ptr, const char *end) {
-    asm(".p2align 5"); // It goes 0.6 us faster with this IDEK
+    // asm(".p2align 5"); // It goes 0.6 us faster with this IDEK
 
     // 0-9 + A-Z + a-z = 62, 4 is the most of any you can find
     PointList antennaLists[62] = {0};
