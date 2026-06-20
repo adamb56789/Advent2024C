@@ -98,7 +98,7 @@ int sumCorrectMiddlePages(const char *ptr, const char *end) {
 // I tried, and it was both slower and didn't work, probably just a skill issue tbh.
 // But 0.00240/1000000 = 2400 ns * 4.3GHZ = 10320 cycles / 15949 bytes input = 0.65 cycles per byte which is crazy so whatever.
 void five_1() {
-    benchmarkFunctionOnFile("../input/5.txt", &sumCorrectMiddlePages, 1000000, 5452);
+    // benchmarkFunctionOnFile("../input/5.txt", &sumCorrectMiddlePages, 1000000, 5452);
 }
 
 void swap(int *a, int *b) {
@@ -187,5 +187,5 @@ int sumCorrectedIncorrectMiddlePages(const char *ptr, const char *end) {
 
 // 0.005602 ms
 void five_2() {
-    benchmarkFunctionOnFile("../input/5.txt", &sumCorrectedIncorrectMiddlePages, 500000, 4598);
+    // benchmarkFunctionOnFile("../input/5.txt", &sumCorrectedIncorrectMiddlePages, 500000, 4598);
 }

@@ -4,17 +4,13 @@
 
 #include "eight.h"
 
-#include "file-utils.h"
+#include "shared.h"
 
-#include <stdint.h>
 #include <immintrin.h>
 
 
 #define N 50
 #define R (N+1)
-
-typedef uint8_t u8;
-typedef uint16_t u16;
 
 typedef struct {
     u8 x;
@@ -29,9 +25,9 @@ typedef struct {
 static int countSetBytes(const u8 *arr) {
     int count = 0;
     for (int i = 0; i < N * N; i += 32) {
-        const __m256i block = _mm256_load_si256((__m256i *) (arr + i)); // Loads 32 chars from the array
+        const __m256i block = _mm256_loadu_si256((__m256i *) (arr + i)); // Loads 32 chars from the array
         const int mask = _mm256_movemask_epi8(block); // Squashes 32 bytes to 32 bits based on the MSB
-        count += _popcnt32(mask);
+        count += __builtin_popcount(mask);
     }
     return count;
 }
@@ -83,17 +79,7 @@ int countAntinodes(const char *ptr, const char *end) {
         }
     }
 
-    // for (int i = 0; i < N; ++i) {
-    //     for (int j = 0; j < N; ++j) {
-    //         if (antinodes[i][j]) {
-    //             printf("#");
-    //         } else {
-    //             printf("%c", ptr[i * R + j]);
-    //         }
-    //     }
-    //     printf("\n");
-    // }
-    return countSetBytes(antinodes);
+    return countSetBytes((u8*) antinodes);
 }
 
 static void tryAddHarmonicAntinode(u8 antinodes[N][N], const Point a, const Point b) {
@@ -150,15 +136,5 @@ int countHarmonicAntinodes(const char *ptr, const char *end) {
         }
     }
 
-    return countSetBytes(antinodes);
-}
-
-// 1.55 us
-void eight_1() {
-    benchmarkFunctionOnFile("../input/8.txt", &countAntinodes, 1000000, 269);
-}
-
-// 2.15 us
-void eight_2() {
-    benchmarkFunctionOnFile("../input/8.txt", &countHarmonicAntinodes, 1000000, 949);
+    return countSetBytes((u8*) antinodes);
 }

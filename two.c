@@ -93,7 +93,7 @@ int countDangerousLevels(const char *ptr, const char *end) {
 
 // 0.00715 ms
 void two_1() {
-    benchmarkFunctionOnFile("../input/2.txt", &countDangerousLevels, 200000, 356);
+    // benchmarkFunctionOnFile("../input/2.txt", &countDangerousLevels, 200000, 356);
 }
 
 int countDangerousLevelsWithTolerance(const char *ptr, const char *end) {
@@ -131,5 +131,5 @@ int countDangerousLevelsWithTolerance(const char *ptr, const char *end) {
 
 // 0.0214
 void two_2(void) {
-    benchmarkFunctionOnFile("../input/2.txt", &countDangerousLevelsWithTolerance, 100000, 413);
+    // benchmarkFunctionOnFile("../input/2.txt", &countDangerousLevelsWithTolerance, 100000, 413);
 }

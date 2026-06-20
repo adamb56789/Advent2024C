@@ -112,21 +112,21 @@ static int sumEnabledMul(const char *ptr, const char *end) {
 }
 
 static void three_1() {
-    const struct WindowsFile file = readChars("../input/3.txt");
-    const char *ptr = file.data;
-    const char *end = file.data + file.fileSize;
-
-    printf("%d\n", sumMul(ptr, end));
-    closeFile(file);
+    // const struct WindowsFile file = readChars("../input/3.txt");
+    // const char *ptr = file.data;
+    // const char *end = file.data + file.fileSize;
+    //
+    // printf("%d\n", sumMul(ptr, end));
+    // closeFile(file);
 }
 
 static void three_2() {
-    const struct WindowsFile file = readChars("../input/3.txt");
-    const char *ptr = file.data;
-    const char *end = file.data + file.fileSize;
-
-    printf("%d\n", sumEnabledMul(ptr, end));
-    closeFile(file);
+    // const struct WindowsFile file = readChars("../input/3.txt");
+    // const char *ptr = file.data;
+    // const char *end = file.data + file.fileSize;
+    //
+    // printf("%d\n", sumEnabledMul(ptr, end));
+    // closeFile(file);
 }
 
 #endif //THREE_H

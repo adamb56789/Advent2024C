@@ -114,7 +114,7 @@
     // 0.137 ms
     void seven_1() {
         // The answer is actually 7710205485870 but that doesn't fit in an int. Good enough to verify correct output.
-        benchmarkFunctionOnFile("../input/7.txt", &totalCalibrationResult, 8000, 739189550);
+        // benchmarkFunctionOnFile("../input/7.txt", &totalCalibrationResult, 8000, 739189550);
     }
 
     static uint64_t splitInt64(const uint64_t a, const uint64_t b) {
@@ -168,5 +168,5 @@
     // 0.216 ms
     void seven_2() {
         // 20928985450275
-        benchmarkFunctionOnFile("../input/7.txt", &totalConcatCalibrationResult, 4000, -390183133);
+        // benchmarkFunctionOnFile("../input/7.txt", &totalConcatCalibrationResult, 4000, -390183133);
     }

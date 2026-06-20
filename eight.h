@@ -4,6 +4,6 @@
 
 #ifndef EIGHT_H
 #define EIGHT_H
-void eight_1();
-void eight_2();
+int countAntinodes(const char *ptr, const char *end);
+int countHarmonicAntinodes(const char *ptr, const char *end);
 #endif //EIGHT_H

@@ -1,4 +1,5 @@
-#include <time.h>
+#include <stdio.h>
+#include <stdlib.h>
 
 #include "eight.h"
 #include "five.h"
@@ -9,10 +10,63 @@
 #include "seven.h"
 #include "six.h"
 
+#include "file-utils.h"
+
+void runAndBenchmark(
+    const char *inputFilePath,
+    int (*f)(const char *, const char *),
+    int runs,
+    int expected
+);
+
 int magicSearch();
 
-int main(void) {
-    eight_1();
+int main(int argc, const char **argv) {
+    if (argc != 2) {
+        fatal("Wrong number of arguments");
+    }
+
+    char *dot = strrchr(argv[1], '.');
+    const double puzzle = strtod(argv[1], &dot);
+
+    if (puzzle == 8.1) runAndBenchmark("../input/8.txt", &countAntinodes, 1000000, 269); // 1.55 us
+    else if (puzzle == 8.2) runAndBenchmark("../input/8.txt", &countHarmonicAntinodes, 1000000, 949); // 2.15 us
+    else fatal("Unknown puzzle");
+}
+
+void runAndBenchmark(
+    const char *inputFilePath,
+    int (*f)(const char *, const char *),
+    const int runs,
+    const int expected
+) {
+    const struct GenericFile file = loadFile(inputFilePath);
+    const char *ptr = file.data;
+
+    // Record time of first execution
+    const double firstStart = getTime();
+    const int result = f(ptr, ptr + file.fileSize);
+    const double firstElapsed = getTime() - firstStart;
+
+    if (result != expected) {
+        printf("Result incorrect!\nExpected: %d\nActual: %d\n", expected, result);
+        return;
+    }
+
+    volatile int dummy = 0; // Compiler sometimes optimises the entire thing away without doing something with the result.
+
+    // Run twice more to warm up
+    dummy = f(ptr, ptr + file.fileSize);
+    dummy = f(ptr, ptr + file.fileSize);
+
+    const double start = getTime();
+    for (int i = 0; i < runs; ++i) {
+        dummy = f(ptr, ptr + file.fileSize);
+    }
+    const double elapsed = getTime() - start;
+    const double average = elapsed / runs;
+    printf("Average: %f ms\nFirst:   %f ms\nElapsed: %f seconds\n", average * 1000, firstElapsed * 1000, elapsed);
+    closeFile(file);
 }
 
 #define TABLE_BITS 10
@@ -81,7 +135,7 @@ int magicSearch() {
             }
             free(seen);
             if (!collision) {
-                printf("magic: %llu\nshift: %d\ntable size: %d\n", magic, shift, TABLE_SIZE);
+                printf("magic: %lu\nshift: %d\ntable size: %d\n", magic, shift, TABLE_SIZE);
                 free(valid_keys);
                 return 0;
             }

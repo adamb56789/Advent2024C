@@ -94,7 +94,7 @@ int calculateTotalDistance(const char *ptr, const char *end) {
 
 // 0.059117 ms
 void one_1() {
-    benchmarkFunctionOnFile("../input/1.txt", &calculateTotalDistance, 20000, 2066446);
+    // benchmarkFunctionOnFile("../input/1.txt", &calculateTotalDistance, 20000, 2066446);
 }
 
 int calculateSimilarityScore(const char *ptr, const char *end) {
@@ -128,5 +128,5 @@ int calculateSimilarityScore(const char *ptr, const char *end) {
 // 0.004845 ms
 // Of which about 0.001660 ms is parsing.
 void one_2() {
-    benchmarkFunctionOnFile("../input/1.txt", &calculateSimilarityScore, 400000, 24931009);
+    // benchmarkFunctionOnFile("../input/1.txt", &calculateSimilarityScore, 400000, 24931009);
 }

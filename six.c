@@ -88,7 +88,7 @@ static int countSetBytes(const u8 visited[]) {
     for (int i = 0; i < M; i += 32) {
         const __m256i block = _mm256_load_si256((__m256i *) (visited + i)); // Loads 32 chars from the array
         const int mask = _mm256_movemask_epi8(block); // Squashes 32 bytes to 32 bits based on the MSB
-        count += _popcnt32(mask);
+        count += __builtin_popcount(mask);
     }
     return count;
 }
@@ -362,9 +362,10 @@ typedef struct {
     int count;
 } IsLoopTaskArgs;
 
-volatile static int atomicCounter = 0;
+_Atomic int atomicCounter = 0;
 
-void isLoopTask(const void *arg) {
+// ReSharper disable once CppParameterMayBeConstPtrOrRef
+void isLoopTask(void *arg) {
     const IsLoopTaskArgs *task = arg;
     int sum = 0;
     for (int i = 0; i < task->count; ++i) {
@@ -510,14 +511,14 @@ int countSuccessfulObstructionPositions(const char *ptr, const char *end) {
 
 // 2.46 us
 void six_1() {
-    benchmarkFunctionOnFile("../input/6.txt", &countPointsVisitedByGuard, 400000, 4433);
+    // benchmarkFunctionOnFile("../input/6.txt", &countPointsVisitedByGuard, 400000, 4433);
 }
 
 // 440 us single-threaded
 // 150 us with the thread pool
 void six_2() {
     pool = thpool_init(THREADS);
-    benchmarkFunctionOnFile("../input/6.txt", &countSuccessfulObstructionPositions, 10000, 1516);
+    // benchmarkFunctionOnFile("../input/6.txt", &countSuccessfulObstructionPositions, 10000, 1516);
     thpool_destroy(pool);
 }
 

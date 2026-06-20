@@ -85,11 +85,11 @@ static int countXmas(const char *start) {
 
 // 2543
 static void four_1() {
-    const struct WindowsFile file = readChars("../input/4.txt");
-    const char *ptr = file.data;
-
-    printf("%d\n", countXmas(ptr));
-    closeFile(file);
+    // const struct WindowsFile file = readChars("../input/4.txt");
+    // const char *ptr = file.data;
+    //
+    // printf("%d\n", countXmas(ptr));
+    // closeFile(file);
 }
 
 static int countCrossMas(const char *start) {
@@ -113,11 +113,11 @@ static int countCrossMas(const char *start) {
 
 //1930
 static void four_2() {
-    const struct WindowsFile file = readChars("../input/4.txt");
-    const char *ptr = file.data;
-
-    printf("%d\n", countCrossMas(ptr));
-    closeFile(file);
+    // const struct WindowsFile file = readChars("../input/4.txt");
+    // const char *ptr = file.data;
+    //
+    // printf("%d\n", countCrossMas(ptr));
+    // closeFile(file);
 }
 
 

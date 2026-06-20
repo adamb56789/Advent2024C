@@ -1,5 +1,9 @@
 #ifndef FILE_UTILS_H
 #define FILE_UTILS_H
+
+#include "shared.h"
+
+#ifdef _WIN32
 #include <stdint.h>
 #include <stdio.h>
 #include <windows.h>
@@ -11,7 +15,7 @@ struct WindowsFile {
     char *data;
 };
 
-static struct WindowsFile readChars(const char *path) {
+static struct WindowsFile loadFile(const char *path) {
     const HANDLE hFile = CreateFileA(
         path, GENERIC_READ, FILE_SHARE_READ, NULL,
         OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL
@@ -32,14 +36,6 @@ static void closeFile(const struct WindowsFile file) {
     CloseHandle(file.hFile);
 }
 
-static void runFunctionOnFile(const char *inputFilePath, int (*f)(const char *, const char *)) {
-    const struct WindowsFile file = readChars(inputFilePath);
-    const char *ptr = file.data;
-
-    printf("%d\n", f(ptr, ptr + file.fileSize));
-    closeFile(file);
-}
-
 static double getTime() {
     LARGE_INTEGER t, f;
     QueryPerformanceCounter(&t);
@@ -47,40 +43,65 @@ static double getTime() {
     return (double) t.QuadPart / (double) f.QuadPart;
 }
 
-static void benchmarkFunctionOnFile(
-    const char *inputFilePath,
-    int (*f)(const char *, const char *),
-    const int runs,
-    const int expected
-) {
-    const struct WindowsFile file = readChars(inputFilePath);
-    const char *ptr = file.data;
+#define GenericFile WindowsFile
 
-    // Record time of first execution
-    const double firstStart = getTime();
-    const int result = f(ptr, ptr + file.fileSize);
-    const double firstElapsed = getTime() - firstStart;
+#else
 
-    if (result != expected) {
-        printf("Result incorrect!\nExpected: %d\nActual: %d\n", expected, result);
-        return;
+#include <time.h>
+
+#include <fcntl.h>
+#include <sys/mman.h>
+#include <sys/stat.h>
+#include <unistd.h>
+
+struct LinuxFile {
+    int fd;
+    size_t fileSize;
+    char *data;
+};
+
+static struct LinuxFile loadFile(const char *path) {
+    const int fd = open(path, O_RDONLY);
+    if (fd == -1) {
+        fatal("Could not open file");
     }
 
-    volatile int dummy = 0; // Compiler sometimes optimises the entire thing away without doing something with the result.
-
-    // Run twice more to warm up
-    dummy = f(ptr, ptr + file.fileSize);
-    dummy = f(ptr, ptr + file.fileSize);
-
-    const double start = getTime();
-    for (int i = 0; i < runs; ++i) {
-        dummy = f(ptr, ptr + file.fileSize);
+    struct stat st;
+    if (fstat(fd, &st) == -1) {
+        close(fd);
+        fatal("fstat failed");
     }
-    const double elapsed = getTime() - start;
-    const double average = elapsed / runs;
-    printf("Average: %f ms\nFirst:   %f ms\nElapsed: %f seconds\n", average * 1000, firstElapsed * 1000, elapsed);
-    closeFile(file);
+
+    const size_t fileSize = (size_t) st.st_size;
+
+    char *data = mmap(NULL, fileSize,PROT_READ,MAP_PRIVATE, fd, 0);
+
+    if (data == MAP_FAILED) {
+        close(fd);
+        fatal("mmap failed");
+    }
+
+    return (struct LinuxFile){
+        .fd = fd,
+        .fileSize = fileSize,
+        .data = data
+    };
 }
 
+static void closeFile(const struct LinuxFile file) {
+    munmap(file.data, file.fileSize);
+    close(file.fd);
+}
+
+static double getTime() {
+    struct timespec ts;
+    clock_gettime(CLOCK_MONOTONIC, &ts);
+
+    return (double) ts.tv_sec + (double) ts.tv_nsec / 1e9;
+}
+
+#define GenericFile LinuxFile
+
+#endif
 
 #endif //FILE_UTILS_H
