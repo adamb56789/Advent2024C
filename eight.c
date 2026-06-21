@@ -4,8 +4,6 @@
 
 #include "eight.h"
 
-#include "shared.h"
-
 #include <immintrin.h>
 
 
@@ -40,7 +38,7 @@ static void tryAddAntinode(u8 antinodes[N][N], const Point a, const Point b) {
     }
 }
 
-int countAntinodes(const char *ptr, const char *end) {
+i64 countAntinodes(const char *ptr, const char *end) {
     // 0-9 + A-Z + a-z = 62, 4 is the most of any you can find
     PointList antennaLists[62] = {0};
 
@@ -79,7 +77,7 @@ int countAntinodes(const char *ptr, const char *end) {
         }
     }
 
-    return countSetBytes((u8*) antinodes);
+    return countSetBytes((u8 *) antinodes);
 }
 
 static void tryAddHarmonicAntinode(u8 antinodes[N][N], const Point a, const Point b) {
@@ -93,7 +91,7 @@ static void tryAddHarmonicAntinode(u8 antinodes[N][N], const Point a, const Poin
     }
 }
 
-int countHarmonicAntinodes(const char *ptr, const char *end) {
+i64 countHarmonicAntinodes(const char *ptr, const char *end) {
     // asm(".p2align 5"); // It goes 0.6 us faster with this IDEK
 
     // 0-9 + A-Z + a-z = 62, 4 is the most of any you can find
@@ -136,5 +134,5 @@ int countHarmonicAntinodes(const char *ptr, const char *end) {
         }
     }
 
-    return countSetBytes((u8*) antinodes);
+    return countSetBytes((u8 *) antinodes);
 }

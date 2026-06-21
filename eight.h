@@ -4,6 +4,8 @@
 
 #ifndef EIGHT_H
 #define EIGHT_H
-int countAntinodes(const char *ptr, const char *end);
-int countHarmonicAntinodes(const char *ptr, const char *end);
+#include "shared.h"
+
+i64 countAntinodes(const char *ptr, const char *end);
+i64 countHarmonicAntinodes(const char *ptr, const char *end);
 #endif //EIGHT_H

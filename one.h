@@ -1,7 +1,8 @@
 #ifndef ONE_H
 #define ONE_H
+#include "shared.h"
 
-void one_1();
-void one_2();
+i64 calculateTotalDistance(const char *ptr, const char *end);
+i64 calculateSimilarityScore(const char *ptr, const char *end);
 
 #endif //ONE_H

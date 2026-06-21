@@ -1,72 +1,141 @@
+#include <inttypes.h>
 #include <stdio.h>
 #include <stdlib.h>
 
-#include "eight.h"
-#include "five.h"
 #include "one.h"
 #include "two.h"
 #include "three.h"
 #include "four.h"
-#include "seven.h"
+#include "five.h"
 #include "six.h"
+#include "seven.h"
+#include "eight.h"
 
 #include "file-utils.h"
 
-void runAndBenchmark(
-    const char *inputFilePath,
-    int (*f)(const char *, const char *),
-    int runs,
-    int expected
-);
-
 int magicSearch();
 
-int main(int argc, const char **argv) {
-    if (argc != 2) {
+typedef struct {
+    i64 (*function)(const char *, const char *);
+
+    int runs;
+    i64 expected;
+    char *fileNameOverride;
+} Puzzle;
+
+const Puzzle PUZZLES[][2] = {
+    {
+        {&calculateTotalDistance, 20000, 2066446}, // 24.42 us
+        {&calculateSimilarityScore, 800000, 24931009} // 0.917 us
+    },
+    {{}, {}},
+    {{}, {}},
+    {{}, {}},
+    {{}, {}},
+    {{}, {}},
+    {{}, {}},
+    {
+        {&countAntinodes, 1000000, 269}, // 0.686 us
+        {&countHarmonicAntinodes, 1000000, 949} // 1.349 us
+    }
+};
+
+void runAndBenchmark(const char *inputFilePath, Puzzle puzzle);
+
+void testAll();
+
+int main(const int argc, const char **argv) {
+    if (argv[1][0] == 'A') {
+        testAll();
+        return 0;
+    }
+
+    if (argc != 3) {
         fatal("Wrong number of arguments");
     }
 
-    char *dot = strrchr(argv[1], '.');
-    const double puzzle = strtod(argv[1], &dot);
+    const int day = atoi(argv[1]); // NOLINT(*-err34-c)
+    const int part = atoi(argv[2]); // NOLINT(*-err34-c)
 
-    if (puzzle == 8.1) runAndBenchmark("../input/8.txt", &countAntinodes, 1000000, 269); // 1.55 us
-    else if (puzzle == 8.2) runAndBenchmark("../input/8.txt", &countHarmonicAntinodes, 1000000, 949); // 2.15 us
-    else fatal("Unknown puzzle");
+    const Puzzle puzzle = PUZZLES[day - 1][part - 1];
+
+    char fileNameBuffer[100];
+
+    sprintf(fileNameBuffer, "../input/%d.txt", day);
+
+    runAndBenchmark(fileNameBuffer, puzzle);
 }
 
-void runAndBenchmark(
-    const char *inputFilePath,
-    int (*f)(const char *, const char *),
-    const int runs,
-    const int expected
-) {
+volatile i64 sink = 0;
+
+static void consume(i64 x) {
+    asm volatile("" :: "r"(x) : "memory");
+    sink ^= x;
+}
+
+void runAndBenchmark(const char *inputFilePath, const Puzzle puzzle) {
     const struct GenericFile file = loadFile(inputFilePath);
     const char *ptr = file.data;
 
     // Record time of first execution
     const double firstStart = getTime();
-    const int result = f(ptr, ptr + file.fileSize);
+    const i64 result = puzzle.function(ptr, ptr + file.fileSize);
     const double firstElapsed = getTime() - firstStart;
 
-    if (result != expected) {
-        printf("Result incorrect!\nExpected: %d\nActual: %d\n", expected, result);
+    if (result != puzzle.expected) {
+        printf("Result incorrect!\nExpected: %ld\nActual: %ld\n", puzzle.expected, result);
         return;
     }
 
-    volatile int dummy = 0; // Compiler sometimes optimises the entire thing away without doing something with the result.
-
     // Run twice more to warm up
-    dummy = f(ptr, ptr + file.fileSize);
-    dummy = f(ptr, ptr + file.fileSize);
+    consume(puzzle.function(ptr, ptr + file.fileSize));
+    consume(puzzle.function(ptr, ptr + file.fileSize));
 
     const double start = getTime();
-    for (int i = 0; i < runs; ++i) {
-        dummy = f(ptr, ptr + file.fileSize);
+    for (int i = 0; i < puzzle.runs; ++i) {
+        consume(puzzle.function(ptr, ptr + file.fileSize));
     }
     const double elapsed = getTime() - start;
-    const double average = elapsed / runs;
-    printf("Average: %f ms\nFirst:   %f ms\nElapsed: %f seconds\n", average * 1000, firstElapsed * 1000, elapsed);
+    double average = elapsed / puzzle.runs;
+
+    char *averageUnits;
+    if (average > 1.0) {
+        average *= 1000;
+        averageUnits = "ms";
+    } else {
+        average *= 1000000;
+        averageUnits = "us";
+    }
+
+    printf("Average: %f %s\nFirst:   %f ms\nElapsed: %f seconds\n", average, averageUnits, firstElapsed * 1000,
+           elapsed);
     closeFile(file);
+}
+
+void testAll() {
+    for (int i = 0; i < 8; i++) {
+        for (int j = 0; j < 2; j++) {
+            const Puzzle puzzle = PUZZLES[i][j];
+            if (!puzzle.function) continue;
+
+            char fileNameBuffer[100];
+
+            sprintf(fileNameBuffer, "../input/%d.txt", i + 1);
+
+            const struct GenericFile file = loadFile(fileNameBuffer);
+            const char *ptr = file.data;
+
+            const i64 result = puzzle.function(ptr, ptr + file.fileSize);
+
+            if (result != puzzle.expected) {
+                printf("Result incorrect for %d.%d\nExpected: %ld\nActual: %ld\n", i + 1, j + 1, puzzle.expected,
+                       result);
+                return;
+            }
+            closeFile(file);
+            printf("%d.%d passed\n", i + 1, j + 1);
+        }
+    }
 }
 
 #define TABLE_BITS 10
@@ -111,10 +180,10 @@ int magicSearch() {
         }
     }
 
-    srand((unsigned)time(NULL));
+    srand((unsigned) time(NULL));
 
     for (int attempts = 0; attempts < 10000000; ++attempts) {
-        const uint64_t magic = ((uint64_t)rand() << 32 | rand()) | 1ULL;
+        const uint64_t magic = ((uint64_t) rand() << 32 | rand()) | 1ULL;
 
         for (int shift = 0; shift <= MAX_SHIFT; ++shift) {
             uint8_t *seen = calloc(TABLE_SIZE, sizeof(uint8_t));
@@ -126,7 +195,7 @@ int magicSearch() {
             int collision = 0;
             for (int i = 0; i < KEY_COUNT; ++i) {
                 const uint64_t key = valid_keys[i];
-                const uint32_t index = (uint32_t)(((key * magic) >> shift) & (TABLE_SIZE - 1));
+                const uint32_t index = (uint32_t) (((key * magic) >> shift) & (TABLE_SIZE - 1));
                 if (seen[index]) {
                     collision = 1;
                     break;
