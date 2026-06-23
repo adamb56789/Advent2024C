@@ -4,5 +4,6 @@
 
 i64 calculateTotalDistance(const char *ptr, const char *end);
 i64 calculateSimilarityScore(const char *ptr, const char *end);
+i64 questionOneParseOnly(const char *ptr, const char *end);
 
 #endif //ONE_H

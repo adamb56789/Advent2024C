@@ -3,7 +3,7 @@ project(Advent2024C C)
 
 set(CMAKE_C_STANDARD 11)
 
-set(CMAKE_C_FLAGS_RELEASE "-O3 -fno-verbose-asm -masm=intel -march=native")
+set(CMAKE_C_FLAGS_RELEASE "-O3 -fno-verbose-asm -masm=intel -march=native -g")
 
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -march=native")
 

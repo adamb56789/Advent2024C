@@ -23,10 +23,12 @@ typedef struct {
     char *fileNameOverride;
 } Puzzle;
 
-const Puzzle PUZZLES[][2] = {
+const Puzzle PUZZLES[][3] = {
     {
         {&calculateTotalDistance, 20000, 2066446}, // 24.42 us
-        {&calculateSimilarityScore, 800000, 24931009} // 0.948 us, 65 ns parsing - 215 GB/s or average 0.35 cycles and 65 picoseconds (!) per row
+        {&calculateSimilarityScore, 800000, 24931009}, // 0.948 us
+        {&questionOneParseOnly, 100000000, 124139}
+        // 67 ns parsing - 210 GB/s or average 0.36 cycles and 67 picoseconds (!) per row
     },
     {{}, {}},
     {{}, {}},
