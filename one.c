@@ -4,63 +4,61 @@
 #define K 99999
 #define OFFSET 10000
 
-static void parsePacked(const char *ptr, const int *leftArray, const int *rightArray) {
-    __m512i bytes = _mm512_loadu_si512(ptr);
+static void parse8Rows(const char *ptr, const int *leftArray, const int *rightArray) {
+    __m512i lane1 = _mm512_loadu_si512(ptr);
+    __m512i lane2 = _mm512_loadu_si512(ptr + 14*4);
 
-    bytes = _mm512_sub_epi8(bytes, _mm512_set1_epi8('0'));
+    // Convert ascii to number
+    lane1 = _mm512_sub_epi8(lane1, _mm512_set1_epi8('0'));
+    lane2 = _mm512_sub_epi8(lane2, _mm512_set1_epi8('0'));
 
-    // ccccc___ ccccc_cc ccc___cc ccc_cccc c___cccc c_ccccc_ __ccccc_ ________
-
-    // Arrange numbers evenly and put all left numbers in the first 4 then right numbers in the last 4
-    bytes = _mm512_maskz_permutexvar_epi8(
-        0x1f1f1f1f1f1f1f1f,
-        _mm512_set_epi8(
-            0, 0, 0, 54, 53, 52, 51, 50,
-            0, 0, 0, 40, 39, 38, 37, 36,
-            0, 0, 0, 26, 25, 24, 23, 22,
-            0, 0, 0, 12, 11, 10, 9, 8,
-            0, 0, 0, 46, 45, 44, 43, 42,
-            0, 0, 0, 32, 31, 30, 29, 28,
-            0, 0, 0, 18, 17, 16, 15, 14,
-            0, 0, 0, 4, 3, 2, 1, 0
-        ),
-        bytes
-    );
-
-    // ccccc___ ccccc___ ccccc___ ccccc___ ccccc___ ccccc___ ccccc___ ccccc___
+    // lllll___rrrrr_lllll___rrrrr_lllll___rrrrr_lllll___rrrrr_________
+    // lllll___rrrrr_lllll___rrrrr_lllll___rrrrr_lllll___rrrrr_________
 
     // For each lane abcde___, calculates a*10+b, c*10+b, e, 0
+    const __m512i tenOneTenOneOne = _mm512_set_epi8(
+        0, 0, 0, 0, 0, 0, 0, 0,
+        0, 1, 1, 10, 1, 10, 0, 0, 0, 1, 1, 10, 1, 10,
+        0, 1, 1, 10, 1, 10, 0, 0, 0, 1, 1, 10, 1, 10,
+        0, 1, 1, 10, 1, 10, 0, 0, 0, 1, 1, 10, 1, 10,
+        0, 1, 1, 10, 1, 10, 0, 0, 0, 1, 1, 10, 1, 10
+    );
+    lane1 = _mm512_maddubs_epi16(lane1, tenOneTenOneOne);
+    lane2 = _mm512_maddubs_epi16(lane2, tenOneTenOneOne);
 
-    bytes = _mm512_maddubs_epi16(bytes, _mm512_set1_epi64(0x00000001010a010a));
+    // l_l_l___r_r_r_l_l_l___r_r_r_l_l_l___r_r_r_l_l_l___r_r_r_________
+    // l_l_l___r_r_r_l_l_l___r_r_r_l_l_l___r_r_r_l_l_l___r_r_r_________
 
-    // sss_ sss_ sss_ sss_ sss_ sss_ sss_ sss_
+    // Arrange numbers evenly and put all left numbers in the left half and right in the right half
+    // Squash the two lanes into one because while they are i16s the largest value is 99, so the higher byte is always 0
+    const __m512i permuteIdx = _mm512_set_epi8(
+        1, 118, 116, 114, 1, 104, 102, 100, 1, 90, 88, 86, 1, 76, 74, 72,
+        1, 54, 52, 50, 1, 40, 38, 36, 1, 26, 24, 22, 1, 12, 10, 8, 1,
+        110, 108, 106, 1, 96, 94, 92, 1, 82, 80, 78, 1, 68, 66, 64,
+        1, 46, 44, 42, 1, 32, 30, 28, 1, 18, 16, 14, 1, 4, 2, 0
+    );
+    __m512i leftRightBytes = _mm512_permutex2var_epi8(lane1, permuteIdx, lane2);
+
+    // lll_lll_lll_lll_lll_lll_lll_lll_rrr_rrr_rrr_rrr_rrr_rrr_rrr_rrr_
 
     // a*10+b, c*10+b, e, 0 -> 100*(a*10+b)+c*10+b, e = 1000a + 100b + 10c + d, e
-    bytes = _mm512_madd_epi16(bytes, _mm512_set1_epi64(0x0000000100010064));
-
-    // i i i i i i i i
-
-    // Each number is i32, but the largest possible value is 9999 which fits in i16, so convert them down
-    __m256i bytes256 = _mm512_cvtepi32_epi16(bytes);
-
-    // ss ss ss ss
+    leftRightBytes = _mm512_maddubs_epi16(leftRightBytes, _mm512_set1_epi32(0x00010164));
 
     // 1000a + 100b + 10c + d, e -> 10*(1000a + 100b + 10c + d) + e = 10000a + 1000b + 100c + 10d + e
-    bytes256 = _mm256_madd_epi16(bytes256, _mm256_set1_epi32(0x1000a));
+    leftRightBytes = _mm512_madd_epi16(leftRightBytes, _mm512_set1_epi32(0x0001000a));
 
-    // Store first 4 ints in left and last 4 in right
-    _mm_storeu_si128((__m128i *) leftArray, _mm256_castsi256_si128(bytes256));
-    _mm_storeu_si128((__m128i *) rightArray, _mm256_extracti128_si256(bytes256, 1));
+    _mm256_storeu_si256((__m256i *) leftArray, _mm512_castsi512_si256(leftRightBytes));
+    _mm256_storeu_si256((__m256i *) rightArray, _mm512_extracti64x4_epi64(leftRightBytes, 1));
 }
 
 i64 calculateTotalDistance(const char *ptr, const char *end) {
     int leftArray[N];
     int rightArray[N];
 
-    for (int i = 0; i < N / 4; ++i) {
+    for (int i = 0; i < N / 8; ++i) {
         // Example: 82728   61150\n
-        parsePacked(ptr, &leftArray[i * 4], &rightArray[i * 4]);
-        ptr += 14 * 4;
+        parse8Rows(ptr, &leftArray[i * 8], &rightArray[i * 8]);
+        ptr += 14 * 8;
     }
 
     // Use counting sort since we are in a relatively small range of numbers.
@@ -106,10 +104,10 @@ i64 calculateSimilarityScore(const char *ptr, const char *end) {
     int leftArray[N];
     int rightArray[N];
 
-    for (int i = 0; i < N / 4; ++i) {
+    for (int i = 0; i < N / 8; ++i) {
         // Example: 82728   61150\n
-        parsePacked(ptr, &leftArray[i * 4], &rightArray[i * 4]);
-        ptr += 14 * 4;
+        parse8Rows(ptr, &leftArray[i * 8], &rightArray[i * 8]);
+        ptr += 14 * 8;
     }
 
     u8 rightCount[K - OFFSET] = {0};
