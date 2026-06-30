@@ -39,7 +39,7 @@ const Puzzle PUZZLES[][3] = {
         {&sumEnabledMul, 1000000, 84893551} // 3.92 us
     },
     {
-        {&countXmas, 100000, 2543}, // 11.4 us
+        {&countXmas, 100000, 2543}, // 1.28 us
         {&countCrossMas, 1000000, 1930} // 1.47 us
     },
     {{}, {}},
