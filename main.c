@@ -30,9 +30,18 @@ const Puzzle PUZZLES[][3] = {
         {&questionOneParseOnly, 100000000, 124139}
         // 67 ns parsing - 210 GB/s or average 0.36 cycles and 67 picoseconds (!) per row
     },
-    {{}, {}},
-    {{}, {}},
-    {{}, {}},
+    {
+        {&countDangerousLevels, 200000, 356}, // 5.26 us
+        {&countDangerousLevelsWithTolerance, 100000, 413} // 9.15 us
+    },
+    {
+        {&sumMul, 1000000, 160672468}, // 2.86 us
+        {&sumEnabledMul, 1000000, 84893551} // 3.92 us
+    },
+    {
+        {&countXmas, 100000, 2543}, // 11.4 us
+        {&countCrossMas, 1000000, 1930} // 1.47 us
+    },
     {{}, {}},
     {{}, {}},
     {{}, {}},

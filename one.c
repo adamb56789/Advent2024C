@@ -5,8 +5,8 @@
 #define OFFSET 10000
 
 static void parse8Rows(const char *ptr, const int *leftArray, const int *rightArray) {
-    __m512i lane1 = _mm512_loadu_si512(ptr);
-    __m512i lane2 = _mm512_loadu_si512(ptr + 14 * 4);
+    i512 lane1 = _mm512_loadu_si512(ptr);
+    i512 lane2 = _mm512_loadu_si512(ptr + 14 * 4);
 
     // Instead of subtracting '0' (48) right away, we defer until after merging our two lanes
     // The first madd instead of a*10+b is 10(a+48) + (b+48) = 10a + b + 528
@@ -23,7 +23,7 @@ static void parse8Rows(const char *ptr, const int *leftArray, const int *rightAr
     // lllll___rrrrr_lllll___rrrrr_lllll___rrrrr_lllll___rrrrr_________
 
     // For each lane abcde___, calculates a*10+b, c*10+b, e, 0
-    const __m512i tenOneTenOneOne = _mm512_set_epi8(
+    const i512 tenOneTenOneOne = _mm512_set_epi8(
         0, 0, 0, 0, 0, 0, 0, 0,
         0, 1, 1, 10, 1, 10, 0, 0, 0, 1, 1, 10, 1, 10,
         0, 1, 1, 10, 1, 10, 0, 0, 0, 1, 1, 10, 1, 10,
@@ -39,13 +39,13 @@ static void parse8Rows(const char *ptr, const int *leftArray, const int *rightAr
     // Arrange numbers evenly and put all left numbers in the left half and right in the right half
     // Squash the two lanes into one because while they are i16s the largest value is 99, so the higher byte is always 0
     const i8 _ = 127;
-    const __m512i permuteIdx = _mm512_set_epi8(
+    const i512 permuteIdx = _mm512_set_epi8(
         _, 118, 116, 114, _, 104, 102, 100, _, 90, 88, 86, _, 76, 74, 72,
         _, 54, 52, 50, _, 40, 38, 36, _, 26, 24, 22, _, 12, 10, 8, 1,
         110, 108, 106, _, 96, 94, 92, _, 82, 80, 78, _, 68, 66, 64,
         _, 46, 44, 42, _, 32, 30, 28, _, 18, 16, 14, _, 4, 2, 0
     );
-    __m512i leftRightBytes = _mm512_permutex2var_epi8(lane1, permuteIdx, lane2);
+    i512 leftRightBytes = _mm512_permutex2var_epi8(lane1, permuteIdx, lane2);
 
     // lll_lll_lll_lll_lll_lll_lll_lll_rrr_rrr_rrr_rrr_rrr_rrr_rrr_rrr_
 
@@ -121,6 +121,7 @@ i64 calculateSimilarityScore(const char *ptr, const char *end) {
 
     parseInputToLeftRightArrays(ptr, leftArray, rightArray);
 
+    // Offset faster than not in testing
     u8 rightCount[K - OFFSET] = {0};
 
     for (int i = 0; i < N; ++i) {
@@ -135,7 +136,6 @@ i64 calculateSimilarityScore(const char *ptr, const char *end) {
     }
     return similarity;
 }
-
 
 
 i64 questionOneParseOnly(const char *ptr, const char *end) {

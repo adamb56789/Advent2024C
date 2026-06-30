@@ -9,8 +9,10 @@
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <stdbool.h>
 #include <string.h>
 #include <immintrin.h>
+#include <assert.h>
 
 typedef uint8_t u8;
 typedef uint16_t u16;
@@ -21,6 +23,12 @@ typedef int8_t i8;
 typedef int16_t i16;
 typedef int32_t i32;
 typedef int64_t i64;
+
+typedef __m256i i256;
+typedef __m512i i512;
+
+typedef __mmask32 mask32;
+typedef __mmask64 mask64;
 
 static void fatal(const char *msg) {
     fprintf(stderr, "%s\n", msg);

@@ -26,4 +26,6 @@ add_executable(Advent2024C main.c
         eight.c
         eight.h
         shared.h
+        three.c
+        four.c
 )

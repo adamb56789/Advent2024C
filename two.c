@@ -1,12 +1,10 @@
-#include <stdbool.h>
+#include "two.h"
 
-#include "file-utils.h"
-
-static int16_t PARSE_TABLE[14648];
+static i8 PARSE_TABLE[14648];
 static bool tableBuilt = false;
 
-static int16_t encodeKey(const char *ptr) {
-    return *(int16_t *) ptr;
+static i16 encodeKey(const char *ptr) {
+    return *(i16 *) ptr;
 }
 
 static void initParseTable() {
@@ -26,12 +24,12 @@ static void initParseTable() {
     tableBuilt = true;
 }
 
-static int twoDigitStringParse(const char *ptr) {
-    return PARSE_TABLE[encodeKey(ptr)];
+static bool isCharDigit(const char c) {
+    return '0' <= c && c <= '9';
 }
 
-static bool isCharDigit(char c) {
-    return '0' <= c && c <= '9';
+static int twoDigitStringParse(const char *ptr) {
+    return PARSE_TABLE[encodeKey(ptr)];
 }
 
 static bool areLevelsSafe(const int a, const int b, const bool isAscending) {
@@ -64,7 +62,7 @@ static int searchForDangerousLevel(const int levels[], const int numberOfLevels,
     return -1;
 }
 
-int countDangerousLevels(const char *ptr, const char *end) {
+long countDangerousLevels(const char *ptr, const char *end) {
     initParseTable();
     int safeCount = 0;
     int levels[8];
@@ -91,12 +89,7 @@ int countDangerousLevels(const char *ptr, const char *end) {
     return safeCount;
 }
 
-// 0.00715 ms
-void two_1() {
-    // benchmarkFunctionOnFile("../input/2.txt", &countDangerousLevels, 200000, 356);
-}
-
-int countDangerousLevelsWithTolerance(const char *ptr, const char *end) {
+long countDangerousLevelsWithTolerance(const char *ptr, const char *end) {
     initParseTable();
     int safeCount = 0;
     while (ptr < end) {
@@ -127,9 +120,4 @@ int countDangerousLevelsWithTolerance(const char *ptr, const char *end) {
         if (isSafe) safeCount++;
     }
     return safeCount;
-}
-
-// 0.0214
-void two_2(void) {
-    // benchmarkFunctionOnFile("../input/2.txt", &countDangerousLevelsWithTolerance, 100000, 413);
 }
