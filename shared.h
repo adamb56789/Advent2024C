@@ -24,6 +24,7 @@ typedef int16_t i16;
 typedef int32_t i32;
 typedef int64_t i64;
 
+typedef __m128i i128;
 typedef __m256i i256;
 typedef __m512i i512;
 
