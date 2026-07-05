@@ -3,16 +3,6 @@
 //
 
 #include "six.h"
-#include "file-utils.h"
-
-#include <stdint.h>
-#include <immintrin.h>
-#include <stdatomic.h>
-
-#include "thpool.h"
-
-typedef uint8_t u8;
-typedef uint16_t u16;
 
 #define N 130
 // Row length includes new line
@@ -21,12 +11,6 @@ typedef uint16_t u16;
 // Highest number of walls in one line
 #define W 14
 #define EDGE_ARRAY_LENGTH 3000
-
-// This is the answer to part 1 plus a bit
-#define TASKS 4500
-#define BATCHES 10
-#define BATCH_SIZE (TASKS / BATCHES)
-#define THREADS 10
 
 typedef enum {
     UP = 0,
@@ -69,13 +53,12 @@ typedef struct {
     u16 gridToEdge[N][N][4];
 } Graph;
 
-static int find_next(const char *ptr) {
-    const __m256i needle = _mm256_set1_epi8('^'); // Sets 32 '^' in a row
+static int find_next(const char *ptr, const char c) {
+    const i256 needle = _mm256_set1_epi8(c);
 
     for (int i = 0; /* lol */ ; i += 32) {
-        const __m256i block = _mm256_load_si256((__m256i *) (ptr + i)); // Loads 32 chars from the array
-        const __m256i cmp = _mm256_cmpeq_epi8(block, needle); // Compare each byte, set to 0xFF if equal
-        const int mask = _mm256_movemask_epi8(cmp); // Squashes 32 bytes to 32 bits based on the MSB
+        const i256 block = _mm256_loadu_si256((i256 *) (ptr + i));
+        const mask32 mask = _mm256_cmpeq_epi8_mask(block, needle);
         if (mask) {
             const int offset = __builtin_ctz(mask); // Count trailing zeros
             return i + offset;
@@ -86,9 +69,9 @@ static int find_next(const char *ptr) {
 static int countSetBytes(const u8 visited[]) {
     int count = 0;
     for (int i = 0; i < M; i += 32) {
-        const __m256i block = _mm256_load_si256((__m256i *) (visited + i)); // Loads 32 chars from the array
+        const i256 block = _mm256_loadu_si256((i256 *) (visited + i)); // Loads 32 chars from the array
         const int mask = _mm256_movemask_epi8(block); // Squashes 32 bytes to 32 bits based on the MSB
-        count += __builtin_popcount(mask);
+        count += _mm_popcnt_u32(mask);
     }
     return count;
 }
@@ -105,10 +88,10 @@ static int gridNextWallRight(const char *ptr, const int pos, const int x) {
     int blockNumber = startBlockNumber;
     const int startBit = relStart & 31;
 
-    const __m256i needle = _mm256_set1_epi8('#');
+    const i256 needle = _mm256_set1_epi8('#');
     for (; blockNumber < 4; ++blockNumber) {
-        const __m256i block = _mm256_loadu_si256((__m256i *) (base + 32 * blockNumber));
-        const __m256i cmp = _mm256_cmpeq_epi8(block, needle);
+        const i256 block = _mm256_loadu_si256((i256 *) (base + 32 * blockNumber));
+        const i256 cmp = _mm256_cmpeq_epi8(block, needle);
         int mask = _mm256_movemask_epi8(cmp);
 
         if (blockNumber == startBlockNumber && startBit > 0) {
@@ -137,10 +120,10 @@ static int gridNextWallLeft(const char *ptr, const int pos, const int x) {
     int blockNumber = startBlockNumber;
     const int endBit = scanAreaEnd & 31;
 
-    const __m256i needle = _mm256_set1_epi8('#');
+    const i256 needle = _mm256_set1_epi8('#');
     for (; blockNumber >= 0; --blockNumber) {
-        const __m256i block = _mm256_loadu_si256((__m256i *) (base + 32 * blockNumber));
-        const __m256i cmp = _mm256_cmpeq_epi8(block, needle);
+        const i256 block = _mm256_loadu_si256((i256 *) (base + 32 * blockNumber));
+        const i256 cmp = _mm256_cmpeq_epi8(block, needle);
         int mask = _mm256_movemask_epi8(cmp);
 
         if (blockNumber == startBlockNumber && endBit < 31) {
@@ -160,10 +143,10 @@ static int gridNextWallLeft(const char *ptr, const int pos, const int x) {
 }
 
 
-int countPointsVisitedByGuard(const char *ptr, const char *end) {
+i64 countPointsVisitedByGuard(const char *ptr, const char *end) {
     u8 visited[M + 32] = {0};
 
-    const int start = find_next(ptr);
+    const int start = find_next(ptr, '^');
     visited[start] = 0xFF;
 
     u8 direction = UP; // unsigned makes it do mod 4 with only add+and
@@ -222,10 +205,10 @@ static int isCornerOutsideLab(const Corner corner) {
  */
 static u8 getInsertIndex(const u8 *arr, const u8 n) {
     // add 128 to everything because we don't have unsigned compare on this
-    const __m128i bias = _mm_set1_epi8((char) 0x80);
-    const __m128i needle = _mm_set1_epi8((char) (n ^ 0x80));
-    const __m128i block = _mm_load_si128((__m128i *) arr);
-    const __m128i cmp = _mm_cmpgt_epi8(_mm_xor_si128(block, bias), needle);
+    const i128 bias = _mm_set1_epi8((char) 0x80);
+    const i128 needle = _mm_set1_epi8((char) (n ^ 0x80));
+    const i128 block = _mm_loadu_si128((i128 *) arr);
+    const i128 cmp = _mm_cmpgt_epi8(_mm_xor_si128(block, bias), needle);
     const int mask = _mm_movemask_epi8(cmp);
     return __builtin_ctz(mask);
 }
@@ -261,8 +244,7 @@ static u8 checkObstacleHit(const u8 *line, const u8 obstacleCoord, const u8 othe
 
 
 static int isLoop(
-    const Graph *graph, const Walls *walls, const u16 start, const u8 direction, const u16 obstacle,
-    const u8 mainWalkVisitedEdges[EDGE_ARRAY_LENGTH]
+    const Graph *graph, Walls *walls, const int start, const u8 direction, const int obstacle, const u8 *mainWalkVisited
 ) {
     // When the obstacle is involved we can't use the pregenerated edge graph, so use the walls instead.
     // The starting position is directly facing the obstacle, so we start with a wall navigation.
@@ -285,7 +267,7 @@ static int isLoop(
     const u8 obstacleX = obstacle % R;
     const u8 obstacleY = obstacle / R;
 
-    // Horizontal wall navigation used 218 times, vertical 185 times, out of total 3671 calls to isLoop
+    // Horizontal wall navigation used 436,654 times, vertical 370,555 times, out of total 7,353,013 calls to isLoop
     // So we don't generate in advance.
     u8 obstacleXInsertIndex = NONE;
     u8 obstacleYInsertIndex = NONE;
@@ -341,7 +323,8 @@ static int isLoop(
         edge = graph->edges[nextEdgeIndex];
         if (nextEdgeIndex == EDGE_EXITS_LAB) break;
 
-        if (mainWalkVisitedEdges[nextEdgeIndex] || visitedEdges[nextEdgeIndex]) {
+        // Reusing the main walk visited data finds some loops earlier. In my data 1087/1516 hit the main walk.
+        if (mainWalkVisited[nextEdgeIndex] || visitedEdges[nextEdgeIndex]) {
             foundLoop = 1;
             break;
         }
@@ -351,33 +334,7 @@ static int isLoop(
     return foundLoop;
 }
 
-typedef struct {
-    const Graph *graph;
-    Walls *walls;
-    u16 starts[BATCH_SIZE];
-    u8 directions[BATCH_SIZE];
-    u16 obstacles[BATCH_SIZE];
-    // Visited edges of the main walk at the start of this batch
-    u8 mainWalkVisitedEdges[EDGE_ARRAY_LENGTH];
-    int count;
-} IsLoopTaskArgs;
-
-_Atomic int atomicCounter = 0;
-
-// ReSharper disable once CppParameterMayBeConstPtrOrRef
-void isLoopTask(void *arg) {
-    const IsLoopTaskArgs *task = arg;
-    int sum = 0;
-    for (int i = 0; i < task->count; ++i) {
-        sum += isLoop(task->graph, task->walls, task->starts[i], task->directions[i], task->obstacles[i],
-                      task->mainWalkVisitedEdges);
-    }
-    atomic_fetch_add(&atomicCounter, sum);
-}
-
-threadpool pool;
-
-int countSuccessfulObstructionPositions(const char *ptr, const char *end) {
+i64 countSuccessfulObstructionPositions(const char *ptr, const char *end) {
     Coords wallCoords[1000] = {0};
     int wallCoordsI = 0;
 
@@ -447,23 +404,13 @@ int countSuccessfulObstructionPositions(const char *ptr, const char *end) {
         graph.edges[i].nextIndex = graph.gridToEdge[p.y][p.x][p.direction];
     }
 
+    int count = 0;
     u8 visited[M] = {0};
     u8 visitedEdges[EDGE_ARRAY_LENGTH] = {0};
 
-    const int start = find_next(ptr);
+    const int start = find_next(ptr, '^');
     u8 direction = UP;
     visited[start] = 1;
-
-    atomicCounter = 0;
-
-    IsLoopTaskArgs batches[BATCHES] = {0};
-    for (int i = 0; i < BATCHES; ++i) {
-        batches[i].graph = &graph;
-        batches[i].walls = &walls;
-    }
-
-    int currentBatch = 0;
-    int indexInBatch = 0;
 
     int pos = start;
     int step = steps[direction];
@@ -478,19 +425,7 @@ int countSuccessfulObstructionPositions(const char *ptr, const char *end) {
         }
         if (c != '#') {
             if (!visited[next]) {
-                batches[currentBatch].starts[indexInBatch] = pos;
-                batches[currentBatch].directions[indexInBatch] = direction;
-                batches[currentBatch].obstacles[indexInBatch] = next;
-                batches[currentBatch].count++;
-
-                indexInBatch++;
-                if (indexInBatch == BATCH_SIZE) {
-                    // Start working on the batch as soon as ready
-                    thpool_add_work(pool, isLoopTask, &batches[currentBatch]);
-                    currentBatch++;
-                    indexInBatch = 0;
-                    memcpy(batches[currentBatch].mainWalkVisitedEdges, visitedEdges, sizeof(visitedEdges));
-                }
+                count += isLoop(&graph, &walls, pos, direction, next, visitedEdges);
             }
             visited[next] = 1;
             pos = next;
@@ -501,25 +436,7 @@ int countSuccessfulObstructionPositions(const char *ptr, const char *end) {
         }
     }
 
-    // Start last batch
-    thpool_add_work(pool, isLoopTask, &batches[currentBatch]);
-
-    thpool_wait(pool);
-
-    return atomicCounter;
-}
-
-// 2.46 us
-void six_1() {
-    // benchmarkFunctionOnFile("../input/6.txt", &countPointsVisitedByGuard, 400000, 4433);
-}
-
-// 440 us single-threaded
-// 150 us with the thread pool
-void six_2() {
-    pool = thpool_init(THREADS);
-    // benchmarkFunctionOnFile("../input/6.txt", &countSuccessfulObstructionPositions, 10000, 1516);
-    thpool_destroy(pool);
+    return count;
 }
 
 /* Non-exhaustive list of things that didn't make it faster

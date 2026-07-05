@@ -4,6 +4,10 @@
 
 #ifndef SIX_H
 #define SIX_H
-void six_1();
-void six_2();
+
+#include "shared.h"
+
+i64 countPointsVisitedByGuard(const char *ptr, const char *end);
+i64 countSuccessfulObstructionPositions(const char *ptr, const char *end);
+
 #endif //SIX_H

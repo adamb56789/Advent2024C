@@ -4,11 +4,6 @@
 
 #include "five.h"
 
-#include <stdbool.h>
-#include <stdint.h>
-
-#include "file-utils.h"
-
 /*
  * The input nodes form a directed graph, with all nodes connected to all other nodes in one direction only.
  * Each node has exactly 24 outgoing and 24 incoming edges, so it is not a DAG and there has to be cycles,
@@ -44,7 +39,9 @@ static int checkRules(int a, int b) {
     return boolRules[a][b];
 }
 
-int sumCorrectMiddlePages(const char *ptr, const char *end) {
+// Could probably speed up by not copying to updates and skipping parsing if violation already found.
+// I tried, and it was both slower and didn't work, probably just a skill issue tbh.
+i64 sumCorrectMiddlePages(const char *ptr, const char *end) {
     initParseTable();
     while (*ptr != '\n') {
         const int left = twoDigitStringParse(ptr);
@@ -93,14 +90,6 @@ int sumCorrectMiddlePages(const char *ptr, const char *end) {
     return sum;
 }
 
-// 0.002254 ms
-// Could probably speed up by not copying to updates and skipping parsing if violation already found.
-// I tried, and it was both slower and didn't work, probably just a skill issue tbh.
-// But 0.00240/1000000 = 2400 ns * 4.3GHZ = 10320 cycles / 15949 bytes input = 0.65 cycles per byte which is crazy so whatever.
-void five_1() {
-    // benchmarkFunctionOnFile("../input/5.txt", &sumCorrectMiddlePages, 1000000, 5452);
-}
-
 void swap(int *a, int *b) {
     const int _a = *a;
     const int _b = *b;
@@ -133,7 +122,7 @@ int quickSelect(int *list, int left, int right, const int k) {
     }
 }
 
-int sumCorrectedIncorrectMiddlePages(const char *ptr, const char *end) {
+i64 sumCorrectedIncorrectMiddlePages(const char *ptr, const char *end) {
     initParseTable();
     while (*ptr != '\n') {
         const int left = twoDigitStringParse(ptr);
@@ -183,9 +172,4 @@ int sumCorrectedIncorrectMiddlePages(const char *ptr, const char *end) {
         }
     }
     return sum;
-}
-
-// 0.005602 ms
-void five_2() {
-    // benchmarkFunctionOnFile("../input/5.txt", &sumCorrectedIncorrectMiddlePages, 500000, 4598);
 }

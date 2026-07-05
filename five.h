@@ -4,6 +4,9 @@
 
 #ifndef FIVE_H
 #define FIVE_H
-void five_1();
-void five_2();
+#include "shared.h"
+
+i64 sumCorrectMiddlePages(const char *ptr, const char *end);
+i64 sumCorrectedIncorrectMiddlePages(const char *ptr, const char *end);
+
 #endif //FIVE_H

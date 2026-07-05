@@ -87,10 +87,8 @@ i64 calculateTotalDistance(const char *ptr, const char *end) {
     i16 rightCount[K + 1 - OFFSET] = {0};
 
     for (int i = 0; i < N; ++i) {
-        const int j = leftArray[i];
-        leftCount[j - OFFSET]++;
-        const int k = rightArray[i];
-        rightCount[k - OFFSET]++;
+        leftCount[leftArray[i] - OFFSET]++;
+        rightCount[rightArray[i] - OFFSET]++;
     }
 
     for (int i = 1; i < K - OFFSET; ++i) {

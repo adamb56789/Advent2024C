@@ -25,40 +25,45 @@ typedef struct {
 
 const Puzzle PUZZLES[][3] = {
     {
-        {&calculateTotalDistance, 20000, 2066446}, // 24.42 us
-        {&calculateSimilarityScore, 800000, 24931009}, // 0.948 us
-        {&questionOneParseOnly, 100000000, 124139}
+        {calculateTotalDistance, 20000, 2066446}, // 24.42 us
+        {calculateSimilarityScore, 800000, 24931009}, // 0.948 us
+        {questionOneParseOnly, 100000000, 124139}
         // 67 ns parsing - 210 GB/s or average 0.36 cycles and 67 picoseconds (!) per row
     },
     {
-        {&countDangerousLevels, 200000, 356}, // 5.26 us
-        {&countDangerousLevelsWithTolerance, 100000, 413} // 9.15 us
+        {countDangerousLevels, 200000, 356}, // 5.26 us
+        {countDangerousLevelsWithTolerance, 100000, 413} // 9.15 us
     },
     {
-        {&sumMul, 1000000, 160672468}, // 2.86 us
-        {&sumEnabledMul, 1000000, 84893551} // 3.92 us
+        {sumMul, 1000000, 160672468}, // 2.86 us
+        {sumEnabledMul, 1000000, 84893551} // 3.92 us
     },
     {
-        {&countXmas, 2000000, 2543}, // 0.611 us
-        {&countCrossMas, 5000000, 1930}, // 0.181 us
+        {countXmas, 2000000, 2543}, // 0.611 us
+        {countCrossMas, 5000000, 1930}, // 0.181 us
+    },
+    {
+        {sumCorrectMiddlePages, 1000000, 5452}, // 1.77 us
+        {sumCorrectedIncorrectMiddlePages, 500000, 4598} // 3.33 us
+    },
+    {
+        {countPointsVisitedByGuard, 800000, 4433}, // 1.23 us
+        {countSuccessfulObstructionPositions, 10000, 1516} // 228 us
     },
     {{}, {}},
-    {{}, {}},
-    {{}, {}},
     {
-        {&countAntinodes, 1000000, 269}, // 0.686 us
-        {&countHarmonicAntinodes, 1000000, 949} // 1.349 us
+        {countAntinodes, 1000000, 269}, // 0.686 us
+        {countHarmonicAntinodes, 1000000, 949} // 1.349 us
     }
 };
 
 void runAndBenchmark(const char *inputFilePath, Puzzle puzzle);
 
-void testAll();
+int testAll();
 
 int main(const int argc, const char **argv) {
     if (argv[1][0] == 'A') {
-        testAll();
-        return 0;
+        return testAll();
     }
 
     if (argc != 3) {
@@ -123,7 +128,8 @@ void runAndBenchmark(const char *inputFilePath, const Puzzle puzzle) {
     closeFile(file);
 }
 
-void testAll() {
+int testAll() {
+    int failures = 0;
     for (int i = 0; i < 8; i++) {
         for (int j = 0; j < 2; j++) {
             const Puzzle puzzle = PUZZLES[i][j];
@@ -141,12 +147,19 @@ void testAll() {
             if (result != puzzle.expected) {
                 printf("Result incorrect for %d.%d\nExpected: %ld\nActual: %ld\n", i + 1, j + 1, puzzle.expected,
                        result);
-                return;
+                failures++;
+            } else {
+                printf("%d.%d passed\n", i + 1, j + 1);
             }
             closeFile(file);
-            printf("%d.%d passed\n", i + 1, j + 1);
         }
     }
+    if (!failures) {
+        printf("\033[1;32mAll tests passed\033[0m\n");
+    } else {
+        printf("\033[1;31m%d tests failed\033[0m\n", failures);
+    }
+    return failures;
 }
 
 #define TABLE_BITS 10
