@@ -53,103 +53,66 @@ typedef struct {
     u16 gridToEdge[N][N][4];
 } Graph;
 
-static int find_next(const char *ptr, const char c) {
-    const i256 needle = _mm256_set1_epi8(c);
+static int findNext(const char *ptr, const char c) {
+    const i512 needle = _mm512_set1_epi8(c);
 
-    for (int i = 0; /* lol */ ; i += 32) {
-        const i256 block = _mm256_loadu_si256((i256 *) (ptr + i));
-        const mask32 mask = _mm256_cmpeq_epi8_mask(block, needle);
-        if (mask) {
-            const int offset = __builtin_ctz(mask); // Count trailing zeros
-            return i + offset;
-        }
+    // Could leave this as an infinite loop instead, but compiler can do stuff if it is bounded
+    for (int i = 0; i < M; i += 64) {
+        const mask64 mask = _mm512_cmpeq_epi8_mask(_mm512_loadu_si512(ptr + i), needle);
+        if (mask) return i + __builtin_ctzll(mask);
     }
+    abort(); // Only use this when will definitely find something
+}
+
+static int findPrev(const char *ptr, const char c) {
+    const i512 needle = _mm512_set1_epi8(c);
+
+    for (int i = 0; i < M; i += 64) {
+        const mask64 mask = _mm512_cmpeq_epi8_mask(_mm512_loadu_si512(ptr - i - 64), needle);
+        if (mask) return i + __builtin_clzll(mask) + 1;
+    }
+    abort();
 }
 
 static int countSetBytes(const u8 visited[]) {
     int count = 0;
-    for (int i = 0; i < M; i += 32) {
-        const i256 block = _mm256_loadu_si256((i256 *) (visited + i)); // Loads 32 chars from the array
-        const int mask = _mm256_movemask_epi8(block); // Squashes 32 bytes to 32 bits based on the MSB
-        count += _mm_popcnt_u32(mask);
+    for (int i = 0; i < M; i += 64) {
+        const i512 block = _mm512_loadu_si512(visited + i);
+        const mask64 mask = _mm512_movepi8_mask(block);
+        count += _mm_popcnt_u64(mask);
     }
     return count;
 }
 
 static int gridNextWallRight(const char *ptr, const int pos, const int x) {
-    const int rowStart = pos - x;
-    // Start search window at column 2 since the first two columns are unreachable, and it means we can fit everything into 4 blocks
-    const char *base = ptr + rowStart + 2;
+    const int collisionPos = pos + findNext(ptr + pos, '#') - 1;
+    const int rowEnd = pos - x + N;
 
-    const int scanAreaStart = x + 1;
-    const int relStart = scanAreaStart - 2; // relative index into 0..127
+    // If we collided with a wall after the end of the row
+    if (collisionPos > rowEnd) return -1;
 
-    const int startBlockNumber = relStart >> 5;
-    int blockNumber = startBlockNumber;
-    const int startBit = relStart & 31;
-
-    const i256 needle = _mm256_set1_epi8('#');
-    for (; blockNumber < 4; ++blockNumber) {
-        const i256 block = _mm256_loadu_si256((i256 *) (base + 32 * blockNumber));
-        const i256 cmp = _mm256_cmpeq_epi8(block, needle);
-        int mask = _mm256_movemask_epi8(cmp);
-
-        if (blockNumber == startBlockNumber && startBit > 0) {
-            const int lowMask = (1 << startBit) - 1;
-            mask &= ~lowMask; // ignore bytes left of scanAreaStart in first block
-        }
-
-        if (mask) {
-            const int lsb = __builtin_ctz(mask);
-            // return the cell immediately to the left of the found wall
-            return rowStart + (blockNumber << 5) + lsb + 1;
-        }
-    }
-
-    return -1;
+    return collisionPos;
 }
 
-
 static int gridNextWallLeft(const char *ptr, const int pos, const int x) {
+    const int collisionPos = pos - findPrev(ptr + pos, '#') + 1;
     const int rowStart = pos - x;
-    const char *base = ptr + rowStart;
 
-    const int scanAreaEnd = x - 1;
+    // If we collided with a wall before the end of the row
+    if (collisionPos < rowStart) return -1;
 
-    const int startBlockNumber = scanAreaEnd >> 5;
-    int blockNumber = startBlockNumber;
-    const int endBit = scanAreaEnd & 31;
-
-    const i256 needle = _mm256_set1_epi8('#');
-    for (; blockNumber >= 0; --blockNumber) {
-        const i256 block = _mm256_loadu_si256((i256 *) (base + 32 * blockNumber));
-        const i256 cmp = _mm256_cmpeq_epi8(block, needle);
-        int mask = _mm256_movemask_epi8(cmp);
-
-        if (blockNumber == startBlockNumber && endBit < 31) {
-            // mask out bytes to the right of pos-1
-            const int keep = (1 << (endBit + 1)) - 1;
-            mask &= keep;
-        }
-
-        if (mask) {
-            const int msb = 31 - __builtin_clz(mask);
-            // Return 1 to the right of what we found (where the guard is after hitting the wall)
-            return rowStart + (blockNumber << 5) + msb + 1;
-        }
-    }
-
-    return -1;
+    return collisionPos;
 }
 
 
 i64 countPointsVisitedByGuard(const char *ptr, const char *end) {
-    u8 visited[M + 32] = {0};
+    // Pad with zeroes to align with the SIMD width
+    u8 visited[M + (64 - M % 64)] = {0};
 
-    const int start = find_next(ptr, '^');
+    const int start = findNext(ptr, '^');
     visited[start] = 0xFF;
 
-    u8 direction = UP; // unsigned makes it do mod 4 with only add+and
+    i8 direction = UP; // unsigned makes it do mod 4 with only add+and
     int pos = start;
     int x = pos % R;
     int step = steps[direction];
@@ -408,7 +371,7 @@ i64 countSuccessfulObstructionPositions(const char *ptr, const char *end) {
     u8 visited[M] = {0};
     u8 visitedEdges[EDGE_ARRAY_LENGTH] = {0};
 
-    const int start = find_next(ptr, '^');
+    const int start = findNext(ptr, '^');
     u8 direction = UP;
     visited[start] = 1;
 
