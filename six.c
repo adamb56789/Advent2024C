@@ -104,7 +104,6 @@ static int gridNextWallLeft(const char *ptr, const int pos, const int x) {
     return collisionPos;
 }
 
-
 i64 countPointsVisitedByGuard(const char *ptr, const char *end) {
     // Pad with zeroes to align with the SIMD width
     u8 visited[M + (64 - M % 64)] = {0};
@@ -112,19 +111,16 @@ i64 countPointsVisitedByGuard(const char *ptr, const char *end) {
     const int start = findNext(ptr, '^');
     visited[start] = 0xFF;
 
-    i8 direction = UP; // unsigned makes it do mod 4 with only add+and
+    i8 direction = UP;
     int pos = start;
     int x = pos % R;
     int step = steps[direction];
     while (1) {
         int next = pos + step;
 
-        if (next >= M) break;
+        if ((unsigned) next >= M) break;
 
         const char c = ptr[next];
-        if (c == '\n') {
-            break;
-        }
         if (c != '#') {
             visited[next] = 0xFF;
             pos = next;
@@ -167,12 +163,9 @@ static int isCornerOutsideLab(const Corner corner) {
  * Finds the index that n would be inserted into in this sorted array of 16 elements.
  */
 static u8 getInsertIndex(const u8 *arr, const u8 n) {
-    // add 128 to everything because we don't have unsigned compare on this
-    const i128 bias = _mm_set1_epi8((char) 0x80);
-    const i128 needle = _mm_set1_epi8((char) (n ^ 0x80));
-    const i128 block = _mm_loadu_si128((i128 *) arr);
-    const i128 cmp = _mm_cmpgt_epi8(_mm_xor_si128(block, bias), needle);
-    const int mask = _mm_movemask_epi8(cmp);
+    const i128 needle = _mm_set1_epi8((char) n);
+    const i128 block = _mm_loadu_epi8(arr);
+    const mask16 mask = _mm_cmpgt_epu8_mask(block, needle);
     return __builtin_ctz(mask);
 }
 
@@ -200,9 +193,8 @@ static Corner wallsNextCornerLeft(const Walls *walls, const Corner corner) {
     return (Corner){walls->horizontal[corner.y][i - 1] + 1, corner.y, LEFT};
 }
 
-static u8 checkObstacleHit(const u8 *line, const u8 obstacleCoord, const u8 otherCoord, u8 *cachedInsertIndex) {
-    if (*cachedInsertIndex == NONE) *cachedInsertIndex = getInsertIndex(line, obstacleCoord);
-    return getInsertIndex(line, otherCoord) == *cachedInsertIndex;
+static bool guardHitsObstacle(const u8 *line, const u8 otherCoord, const u8 obstacleInsertIndex) {
+    return getInsertIndex(line, otherCoord) == obstacleInsertIndex;
 }
 
 
@@ -230,10 +222,10 @@ static int isLoop(
     const u8 obstacleX = obstacle % R;
     const u8 obstacleY = obstacle / R;
 
-    // Horizontal wall navigation used 436,654 times, vertical 370,555 times, out of total 7,353,013 calls to isLoop
-    // So we don't generate in advance.
-    u8 obstacleXInsertIndex = NONE;
-    u8 obstacleYInsertIndex = NONE;
+    // Horizontal wall navigation used 436,654 times, vertical 370,555 times, out of total 7,353,013 calls to isLoop.
+    // But now faster to always generate in advance anyway, likely because of reduced branches.
+    const u8 obstacleXInsertIndex = getInsertIndex(walls->horizontal[obstacleY], obstacleX);
+    const u8 obstacleYInsertIndex = getInsertIndex(walls->vertical[obstacleX], obstacleY);
 
     u8 visitedEdges[EDGE_ARRAY_LENGTH] = {0};
     u8 foundLoop = 0;
@@ -241,7 +233,7 @@ static int isLoop(
     while (1) {
         c = edge.corner;
         if (c.x == obstacleX && c.direction == LEFT && c.y > obstacleY) {
-            if (checkObstacleHit(walls->vertical[c.x], obstacleY, c.y, &obstacleYInsertIndex)) {
+            if (guardHitsObstacle(walls->vertical[c.x], c.y, obstacleYInsertIndex)) {
                 // Corners on the obstacle aren't in the graph, so we need to do another wall navigation
                 c = wallsNextCornerRight(walls, (Corner){c.x, obstacleY + 1, UP});
             } else {
@@ -253,7 +245,7 @@ static int isLoop(
 
             nextEdgeIndex = graph->gridToEdge[c.y][c.x][c.direction];
         } else if (c.x == obstacleX && c.direction == RIGHT && c.y < obstacleY) {
-            if (checkObstacleHit(walls->vertical[c.x], obstacleY, c.y, &obstacleYInsertIndex)) {
+            if (guardHitsObstacle(walls->vertical[c.x], c.y, obstacleYInsertIndex)) {
                 c = wallsNextCornerLeft(walls, (Corner){c.x, obstacleY - 1, DOWN});
             } else {
                 c = wallsNextCornerDown(walls, c);
@@ -262,7 +254,7 @@ static int isLoop(
 
             nextEdgeIndex = graph->gridToEdge[c.y][c.x][c.direction];
         } else if (c.y == obstacleY && c.direction == DOWN && c.x > obstacleX) {
-            if (checkObstacleHit(walls->horizontal[c.y], obstacleX, c.x, &obstacleXInsertIndex)) {
+            if (guardHitsObstacle(walls->horizontal[c.y], c.x, obstacleXInsertIndex)) {
                 c = wallsNextCornerUp(walls, (Corner){obstacleX + 1, c.y, LEFT});
             } else {
                 c = wallsNextCornerLeft(walls, c);
@@ -271,7 +263,7 @@ static int isLoop(
 
             nextEdgeIndex = graph->gridToEdge[c.y][c.x][c.direction];
         } else if (c.y == obstacleY && c.direction == UP && c.x < obstacleX) {
-            if (checkObstacleHit(walls->horizontal[c.y], obstacleX, c.x, &obstacleXInsertIndex)) {
+            if (guardHitsObstacle(walls->horizontal[c.y], c.x, obstacleXInsertIndex)) {
                 c = wallsNextCornerDown(walls, (Corner){obstacleX - 1, c.y, RIGHT});
             } else {
                 c = wallsNextCornerRight(walls, c);
@@ -367,6 +359,8 @@ i64 countSuccessfulObstructionPositions(const char *ptr, const char *end) {
         graph.edges[i].nextIndex = graph.gridToEdge[p.y][p.x][p.direction];
     }
 
+    // Everything above this point takes about 12 us as of time of writing
+
     int count = 0;
     u8 visited[M] = {0};
     u8 visitedEdges[EDGE_ARRAY_LENGTH] = {0};
@@ -405,4 +399,11 @@ i64 countSuccessfulObstructionPositions(const char *ptr, const char *end) {
 /* Non-exhaustive list of things that didn't make it faster
  * - Using an array of structs instead of struct of arrays to batch arguments (1 us slower).
  * - Calculating the obstacle position in isLoop instead of passing it in
+ */
+
+/* We always calculate the obstacle wall indexes already. Use the adjacent row or column's walls to get a list
+ * of locations where outgoing edges will collide with the obstacle, lookup their edge indexes in gridToEdge,
+ * and repoint those to a new edge that leaves the obstacle. For each direction.
+ *
+ * position based jump tables could store outgoing direction instead of incoming
  */

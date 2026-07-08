@@ -28,6 +28,7 @@ typedef __m128i i128;
 typedef __m256i i256;
 typedef __m512i i512;
 
+typedef __mmask16 mask16;
 typedef __mmask32 mask32;
 typedef __mmask64 mask64;
 
