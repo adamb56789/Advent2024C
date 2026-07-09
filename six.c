@@ -227,12 +227,21 @@ static int isLoop(
     const u8 obstacleXInsertIndex = getInsertIndex(walls->horizontal[obstacleY], obstacleX);
     const u8 obstacleYInsertIndex = getInsertIndex(walls->vertical[obstacleX], obstacleY);
 
+    // const u8 obstacleCollisionXMin = obstacleXInsertIndex == 0 ? 0 : walls->horizontal[obstacleY][obstacleXInsertIndex - 1];
+    // const u8 obstacleCollisionXMax = walls->horizontal[obstacleY][obstacleXInsertIndex];
+    // const u8 obstacleCollisionYMin = obstacleYInsertIndex == 0 ? 0 :  walls->vertical[obstacleX][obstacleYInsertIndex - 1];
+    // const u8 obstacleCollisionYMax = walls->vertical[obstacleX][obstacleYInsertIndex];
+
     u8 visitedEdges[EDGE_ARRAY_LENGTH] = {0};
     u8 foundLoop = 0;
 
     while (1) {
         c = edge.corner;
-        if (c.x == obstacleX && c.direction == LEFT && c.y > obstacleY) {
+
+        // Short circuit condition in first statement, is true most of the time
+        if (c.x != obstacleX && c.y != obstacleY) {
+            nextEdgeIndex = edge.nextIndex;
+        } else if (c.x == obstacleX && c.direction == LEFT && c.y > obstacleY) {
             if (guardHitsObstacle(walls->vertical[c.x], c.y, obstacleYInsertIndex)) {
                 // Corners on the obstacle aren't in the graph, so we need to do another wall navigation
                 c = wallsNextCornerRight(walls, (Corner){c.x, obstacleY + 1, UP});
@@ -399,11 +408,10 @@ i64 countSuccessfulObstructionPositions(const char *ptr, const char *end) {
 /* Non-exhaustive list of things that didn't make it faster
  * - Using an array of structs instead of struct of arrays to batch arguments (1 us slower).
  * - Calculating the obstacle position in isLoop instead of passing it in
+ * - Updating the edge graph at the start of each isLoop and reverting it
  */
 
-/* We always calculate the obstacle wall indexes already. Use the adjacent row or column's walls to get a list
- * of locations where outgoing edges will collide with the obstacle, lookup their edge indexes in gridToEdge,
- * and repoint those to a new edge that leaves the obstacle. For each direction.
- *
- * position based jump tables could store outgoing direction instead of incoming
+/*
+ * - Calculate ranges that short circuit when not in obstacle line
+ * - Replacing functions per direction with LUTs
  */

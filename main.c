@@ -48,7 +48,7 @@ const Puzzle PUZZLES[][3] = {
     },
     {
         {countPointsVisitedByGuard, 800000, 4433}, // 0.952 us
-        {countSuccessfulObstructionPositions, 10000, 1516} // 208 us
+        {countSuccessfulObstructionPositions, 10000, 1516} // 197 us
     },
     {{}, {}},
     {

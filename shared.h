@@ -37,4 +37,12 @@ static void fatal(const char *msg) {
     exit(EXIT_FAILURE);
 }
 
+// #define ENABLE_DEBUG_LOGS
+
+#ifdef ENABLE_DEBUG_LOGS
+#define debug(M, ...) printf(M, ##__VA_ARGS__)
+#else
+#define debug(M, ...)
+#endif
+
 #endif //ADVENT2024C_SHARED_H
