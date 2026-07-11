@@ -227,10 +227,14 @@ static int isLoop(
     const u8 obstacleXInsertIndex = getInsertIndex(walls->horizontal[obstacleY], obstacleX);
     const u8 obstacleYInsertIndex = getInsertIndex(walls->vertical[obstacleX], obstacleY);
 
-    // const u8 obstacleCollisionXMin = obstacleXInsertIndex == 0 ? 0 : walls->horizontal[obstacleY][obstacleXInsertIndex - 1];
-    // const u8 obstacleCollisionXMax = walls->horizontal[obstacleY][obstacleXInsertIndex];
-    // const u8 obstacleCollisionYMin = obstacleYInsertIndex == 0 ? 0 :  walls->vertical[obstacleX][obstacleYInsertIndex - 1];
-    // const u8 obstacleCollisionYMax = walls->vertical[obstacleX][obstacleYInsertIndex];
+    const u8 obstacleCollisionXMin = obstacleXInsertIndex == 0
+                                         ? 0
+                                         : walls->horizontal[obstacleY][obstacleXInsertIndex - 1];
+    const u8 obstacleCollisionXMax = walls->horizontal[obstacleY][obstacleXInsertIndex];
+    const u8 obstacleCollisionYMin = obstacleYInsertIndex == 0
+                                         ? 0
+                                         : walls->vertical[obstacleX][obstacleYInsertIndex - 1];
+    const u8 obstacleCollisionYMax = walls->vertical[obstacleX][obstacleYInsertIndex];
 
     u8 visitedEdges[EDGE_ARRAY_LENGTH] = {0};
     u8 foundLoop = 0;
@@ -241,42 +245,24 @@ static int isLoop(
         // Short circuit condition in first statement, is true most of the time
         if (c.x != obstacleX && c.y != obstacleY) {
             nextEdgeIndex = edge.nextIndex;
-        } else if (c.x == obstacleX && c.direction == LEFT && c.y > obstacleY) {
-            if (guardHitsObstacle(walls->vertical[c.x], c.y, obstacleYInsertIndex)) {
-                // Corners on the obstacle aren't in the graph, so we need to do another wall navigation
-                c = wallsNextCornerRight(walls, (Corner){c.x, obstacleY + 1, UP});
-            } else {
-                // It might look like this wallsNextCornerUp unnecessarily recalculates the insert index. But the compiler
-                // output is the same either way.
-                c = wallsNextCornerUp(walls, c);
-            }
+        } else if (c.x == obstacleX && c.direction == LEFT && c.y > obstacleY && c.y < obstacleCollisionYMax) {
+            // Corners on the obstacle aren't in the graph, so we need to do another wall navigation
+            c = wallsNextCornerRight(walls, (Corner){c.x, obstacleY + 1, UP});
             if (isCornerOutsideLab(c)) break;
 
             nextEdgeIndex = graph->gridToEdge[c.y][c.x][c.direction];
-        } else if (c.x == obstacleX && c.direction == RIGHT && c.y < obstacleY) {
-            if (guardHitsObstacle(walls->vertical[c.x], c.y, obstacleYInsertIndex)) {
-                c = wallsNextCornerLeft(walls, (Corner){c.x, obstacleY - 1, DOWN});
-            } else {
-                c = wallsNextCornerDown(walls, c);
-            }
+        } else if (c.x == obstacleX && c.direction == RIGHT && c.y < obstacleY && c.y > obstacleCollisionYMin) {
+            c = wallsNextCornerLeft(walls, (Corner){c.x, obstacleY - 1, DOWN});
             if (isCornerOutsideLab(c)) break;
 
             nextEdgeIndex = graph->gridToEdge[c.y][c.x][c.direction];
-        } else if (c.y == obstacleY && c.direction == DOWN && c.x > obstacleX) {
-            if (guardHitsObstacle(walls->horizontal[c.y], c.x, obstacleXInsertIndex)) {
-                c = wallsNextCornerUp(walls, (Corner){obstacleX + 1, c.y, LEFT});
-            } else {
-                c = wallsNextCornerLeft(walls, c);
-            }
+        } else if (c.y == obstacleY && c.direction == DOWN && c.x > obstacleX && c.x < obstacleCollisionXMax) {
+            c = wallsNextCornerUp(walls, (Corner){obstacleX + 1, c.y, LEFT});
             if (isCornerOutsideLab(c)) break;
 
             nextEdgeIndex = graph->gridToEdge[c.y][c.x][c.direction];
-        } else if (c.y == obstacleY && c.direction == UP && c.x < obstacleX) {
-            if (guardHitsObstacle(walls->horizontal[c.y], c.x, obstacleXInsertIndex)) {
-                c = wallsNextCornerDown(walls, (Corner){obstacleX - 1, c.y, RIGHT});
-            } else {
-                c = wallsNextCornerRight(walls, c);
-            }
+        } else if (c.y == obstacleY && c.direction == UP && c.x < obstacleX && c.x > obstacleCollisionXMin) {
+            c = wallsNextCornerDown(walls, (Corner){obstacleX - 1, c.y, RIGHT});
             if (isCornerOutsideLab(c)) break;
 
             nextEdgeIndex = graph->gridToEdge[c.y][c.x][c.direction];
@@ -414,4 +400,6 @@ i64 countSuccessfulObstructionPositions(const char *ptr, const char *end) {
 /*
  * - Calculate ranges that short circuit when not in obstacle line
  * - Replacing functions per direction with LUTs
+ * - re-evaluate precalculating obstacle collision ranges
+ *   - try loading obstacle walls once if not
  */
