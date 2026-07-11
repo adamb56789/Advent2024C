@@ -2,7 +2,7 @@
 // Created by Adam on 27/06/2025.
 //
 
-#include "six.h"
+#include "6.h"
 
 #define N 130
 // Row length includes new line
@@ -192,11 +192,6 @@ static Corner wallsNextCornerLeft(const Walls *walls, const Corner corner) {
     if (i == 0) return NO_CORNER;
     return (Corner){walls->horizontal[corner.y][i - 1] + 1, corner.y, LEFT};
 }
-
-static bool guardHitsObstacle(const u8 *line, const u8 otherCoord, const u8 obstacleInsertIndex) {
-    return getInsertIndex(line, otherCoord) == obstacleInsertIndex;
-}
-
 
 static int isLoop(
     const Graph *graph, Walls *walls, const int start, const u8 direction, const int obstacle, const u8 *mainWalkVisited
@@ -395,11 +390,5 @@ i64 countSuccessfulObstructionPositions(const char *ptr, const char *end) {
  * - Using an array of structs instead of struct of arrays to batch arguments (1 us slower).
  * - Calculating the obstacle position in isLoop instead of passing it in
  * - Updating the edge graph at the start of each isLoop and reverting it
- */
-
-/*
- * - Calculate ranges that short circuit when not in obstacle line
  * - Replacing functions per direction with LUTs
- * - re-evaluate precalculating obstacle collision ranges
- *   - try loading obstacle walls once if not
  */

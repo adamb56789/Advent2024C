@@ -2,14 +2,14 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-#include "one.h"
-#include "two.h"
-#include "three.h"
-#include "four.h"
-#include "five.h"
-#include "six.h"
-#include "seven.h"
-#include "eight.h"
+#include "1.h"
+#include "2.h"
+#include "3.h"
+#include "4.h"
+#include "5.h"
+#include "6.h"
+#include "7.h"
+#include "8.h"
 
 #include "file-utils.h"
 

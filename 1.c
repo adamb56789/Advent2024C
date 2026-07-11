@@ -1,4 +1,4 @@
-#include "one.h"
+#include "1.h"
 
 #define N 1000
 #define K 99999

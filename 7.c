@@ -2,9 +2,9 @@
     // Created by Adam on 06/07/2025.
     //
 
-    #include "seven.h"
+    #include "7.h"
 
-    #include "file-utils.h"
+#include "file-utils.h"
 
 
     static uint64_t myParseInt64(char **s) {

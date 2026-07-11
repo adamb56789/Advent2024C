@@ -1,4 +1,4 @@
-#include "three.h"
+#include "3.h"
 
 i64 sumMul(const char *ptr, const char *end) {
     // mul\(\d+,\d+\) regex finds 671 occurrences

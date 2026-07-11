@@ -9,21 +9,21 @@ set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -march=native")
 
 add_executable(Advent2024C main.c
         file-utils.h
-        one.h
-        two.h
-        three.h
-        four.h
-        five.c
-        five.h
-        six.c
-        six.h
-        one.c
-        two.c
-        seven.c
-        seven.h
-        eight.c
-        eight.h
+        1.h
+        2.h
+        3.h
+        4.h
+        5.c
+        5.h
+        6.c
+        6.h
+        1.c
+        2.c
+        7.c
+        7.h
+        8.c
+        8.h
         shared.h
-        three.c
-        four.c
+        3.c
+        4.c
 )
