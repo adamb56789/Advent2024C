@@ -2,7 +2,10 @@
 // Created by Adam on 27/06/2025.
 //
 
-#include "6.h"
+#include "6_parallel.h"
+
+#include <pthread.h>
+#include <stdatomic.h>
 
 #define N 130
 // Row length includes new line
@@ -39,7 +42,7 @@ typedef struct {
     u8 direction;
 } Corner;
 
-static const Corner NO_CORNER = {NONE, NONE, NONE};
+static const Corner NO_CORNER = (Corner){NONE, NONE, NONE};
 
 typedef struct {
     Corner corner;
@@ -62,97 +65,6 @@ static int findNext(const char *ptr, const char c) {
         if (mask) return i + __builtin_ctzll(mask);
     }
     abort(); // Only use this when will definitely find something
-}
-
-static int findPrev(const char *ptr, const char c) {
-    const i512 needle = _mm512_set1_epi8(c);
-
-    for (int i = 0; i < M; i += 64) {
-        const mask64 mask = _mm512_cmpeq_epi8_mask(_mm512_loadu_si512(ptr - i - 64), needle);
-        if (mask) return i + __builtin_clzll(mask) + 1;
-    }
-    abort();
-}
-
-static int countSetBytes(const u8 visited[]) {
-    int count = 0;
-    for (int i = 0; i < M; i += 64) {
-        const i512 block = _mm512_loadu_si512(visited + i);
-        const mask64 mask = _mm512_movepi8_mask(block);
-        count += _mm_popcnt_u64(mask);
-    }
-    return count;
-}
-
-static int gridNextWallRight(const char *ptr, const int pos, const int x) {
-    const int collisionPos = pos + findNext(ptr + pos, '#') - 1;
-    const int rowEnd = pos - x + N;
-
-    // If we collided with a wall after the end of the row
-    if (collisionPos > rowEnd) return -1;
-
-    return collisionPos;
-}
-
-static int gridNextWallLeft(const char *ptr, const int pos, const int x) {
-    const int collisionPos = pos - findPrev(ptr + pos, '#') + 1;
-    const int rowStart = pos - x;
-
-    // If we collided with a wall before the end of the row
-    if (collisionPos < rowStart) return -1;
-
-    return collisionPos;
-}
-
-i64 countPointsVisitedByGuard(const char *ptr, const char *end) {
-    // Pad with zeroes to align with the SIMD width
-    u8 visited[M + (64 - M % 64)] = {0};
-
-    const int start = findNext(ptr, '^');
-    visited[start] = 0xFF;
-
-    i8 direction = UP;
-    int pos = start;
-    int x = pos % R;
-    int step = steps[direction];
-    while (1) {
-        int next = pos + step;
-
-        if ((unsigned) next >= M) break;
-
-        const char c = ptr[next];
-        if (c != '#') {
-            visited[next] = 0xFF;
-            pos = next;
-        } else {
-            direction = (direction + 1) % 4;
-            // For horizontal collision detection we can use SIMD to find the next wall much faster
-            if (direction == RIGHT) {
-                next = gridNextWallRight(ptr, pos, x);
-                if (next == -1) {
-                    memset(&visited[pos], 0xFF, N - pos % R);
-                    break;
-                }
-                memset(&visited[pos], 0xFF, 1 + next - pos);
-                x += next - pos;
-                pos = next;
-                direction = DOWN;
-            } else if (direction == LEFT) {
-                next = gridNextWallLeft(ptr, pos, x);
-                if (next == -1) {
-                    memset(&visited[pos - pos % R], 0xFF, pos % R + 1);
-                    break;
-                }
-                memset(&visited[next], 0xFF, 1 + pos - next);
-                x -= pos - next;
-                pos = next;
-                direction = UP;
-            }
-            step = steps[direction];
-        }
-    }
-
-    return countSetBytes(visited);
 }
 
 static int isCornerOutsideLab(const Corner corner) {
@@ -194,7 +106,7 @@ static Corner wallsNextCornerLeft(const Walls *walls, const Corner corner) {
 }
 
 static int isLoop(
-    const Graph *graph, Walls *walls, const int start, const u8 direction, const int obstacle, const u8 *mainWalkVisited
+    const Graph *graph, const Walls *walls, const int start, const u8 direction, const int obstacle
 ) {
     // When the obstacle is involved we can't use the pregenerated edge graph, so use the walls instead.
     // The starting position is directly facing the obstacle, so we start with a wall navigation.
@@ -268,8 +180,7 @@ static int isLoop(
         edge = graph->edges[nextEdgeIndex];
         if (nextEdgeIndex == EDGE_EXITS_LAB) break;
 
-        // Reusing the main walk visited data finds some loops earlier. In my data 1087/1516 hit the main walk.
-        if (mainWalkVisited[nextEdgeIndex] || visitedEdges[nextEdgeIndex]) {
+        if (visitedEdges[nextEdgeIndex]) {
             foundLoop = 1;
             break;
         }
@@ -279,7 +190,66 @@ static int isLoop(
     return foundLoop;
 }
 
-i64 countSuccessfulObstructionPositions(const char *ptr, const char *end) {
+// This is the answer to part 1 plus a bit
+#define TASKS 4500
+#define THREADS 10
+#define BATCHES (THREADS + 1)
+#define BATCH_MAX_SIZE (TASKS / BATCHES)
+
+typedef struct {
+    const Graph *graph;
+    Walls *walls;
+    u16 starts[BATCH_MAX_SIZE];
+    u8 directions[BATCH_MAX_SIZE];
+    u16 obstacles[BATCH_MAX_SIZE];
+    // Visited edges of the main walk at the start of this batch
+    int batchSize;
+} IsLoopTaskArgs;
+
+typedef struct {
+    atomic_int workAvailable;
+    IsLoopTaskArgs *args;
+} Task;
+
+static _Atomic int successfulObstructionPositionCount_atomic;
+
+static _Atomic int threadsRunning_atomic;
+static Task tasks[BATCHES];
+
+static void runIsLoopTask(const IsLoopTaskArgs *args) {
+    int sum = 0;
+    for (int i = 0; i < args->batchSize; ++i) {
+        sum += isLoop(args->graph, args->walls, args->starts[i], args->directions[i], args->obstacles[i]);
+    }
+    successfulObstructionPositionCount_atomic += sum;
+}
+
+// ReSharper disable once CppParameterMayBeConstPtrOrRef
+static void *worker(void *arg) {
+    Task *task = arg;
+
+    while (1) {
+        while (!atomic_load_explicit(&task->workAvailable, memory_order_acquire)) _mm_pause();
+        task->workAvailable = false;
+
+        runIsLoopTask(task->args);
+
+        threadsRunning_atomic--;
+    }
+}
+
+static pthread_t threads[THREADS];
+static bool initialized = false;
+
+i64 countSuccessfulObstructionPositionsParallel(const char *ptr, const char *end) {
+    if (!initialized) {
+        for (int i = 0; i < THREADS; ++i) {
+            tasks[i].workAvailable = false;
+            pthread_create(&threads[i], NULL, worker, &tasks[i]);
+        }
+        initialized = true;
+    }
+
     Coords wallCoords[1000] = {0};
     int wallCoordsI = 0;
 
@@ -351,13 +321,22 @@ i64 countSuccessfulObstructionPositions(const char *ptr, const char *end) {
 
     // Everything above this point takes about 12 us as of time of writing
 
-    int count = 0;
     u8 visited[M] = {0};
-    u8 visitedEdges[EDGE_ARRAY_LENGTH] = {0};
 
     const int start = findNext(ptr, '^');
     u8 direction = UP;
     visited[start] = 1;
+
+    successfulObstructionPositionCount_atomic = 0;
+
+    IsLoopTaskArgs batches[BATCHES] = {0};
+    for (int i = 0; i < BATCHES; ++i) {
+        batches[i].graph = &graph;
+        batches[i].walls = &walls;
+    }
+
+    int currentBatch = 0;
+    int indexInBatch = 0;
 
     int pos = start;
     int step = steps[direction];
@@ -372,23 +351,34 @@ i64 countSuccessfulObstructionPositions(const char *ptr, const char *end) {
         }
         if (c != '#') {
             if (!visited[next]) {
-                count += isLoop(&graph, &walls, pos, direction, next, visitedEdges);
+                batches[currentBatch].starts[indexInBatch] = pos;
+                batches[currentBatch].directions[indexInBatch] = direction;
+                batches[currentBatch].obstacles[indexInBatch] = next;
+                batches[currentBatch].batchSize++;
+
+                indexInBatch++;
+                if (indexInBatch == BATCH_MAX_SIZE) {
+                    // Start working on the batch as soon as ready
+                    threadsRunning_atomic++;
+                    tasks[currentBatch].args = &batches[currentBatch];
+                    atomic_fetch_add_explicit(&tasks[currentBatch].workAvailable, true, memory_order_release);
+
+                    currentBatch++;
+                    indexInBatch = 0;
+                }
             }
             visited[next] = 1;
             pos = next;
         } else {
-            visitedEdges[graph.gridToEdge[pos / R][pos % R][direction]] = 1;
             direction = (direction + 1) % 4;
             step = steps[direction];
         }
     }
 
-    return count;
-}
+    // Run the last task in the main thread
+    runIsLoopTask(&batches[currentBatch]);
 
-/* Non-exhaustive list of things that didn't make it faster
- * - Using an array of structs instead of struct of arrays to batch arguments (1 us slower).
- * - Calculating the obstacle position in isLoop instead of passing it in
- * - Updating the edge graph at the start of each isLoop and reverting it
- * - Replacing functions per direction with LUTs
- */
+    while (threadsRunning_atomic != 0) _mm_pause();
+
+    return successfulObstructionPositionCount_atomic;
+}

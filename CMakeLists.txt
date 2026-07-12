@@ -26,4 +26,6 @@ add_executable(Advent2024C main.c
         shared.h
         3.c
         4.c
+        6_parallel.c
+        6_parallel.h
 )

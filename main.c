@@ -8,6 +8,7 @@
 #include "4.h"
 #include "5.h"
 #include "6.h"
+#include "6_parallel.h"
 #include "7.h"
 #include "8.h"
 
@@ -48,7 +49,8 @@ const Puzzle PUZZLES[][3] = {
     },
     {
         {countPointsVisitedByGuard, 800000, 4433}, // 0.952 us
-        {countSuccessfulObstructionPositions, 10000, 1516} // 195 us
+        {countSuccessfulObstructionPositions, 10000, 1516}, // 195 us
+        {countSuccessfulObstructionPositionsParallel, 10000, 1516} // 78.6 us
     },
     {{}, {}},
     {
