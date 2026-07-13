@@ -7,6 +7,9 @@
 #include <pthread.h>
 #include <stdatomic.h>
 
+#include "dumb_lil_threadpool.h"
+#include "platform.h"
+
 #define N 130
 // Row length includes new line
 #define R (N+1)
@@ -190,11 +193,14 @@ static int isLoop(
     return foundLoop;
 }
 
-// This is the answer to part 1 plus a bit
-#define TASKS 4500
+// This is the answer to part 1
+#define TASKS 4433
 #define THREADS 10
 #define BATCHES (THREADS + 1)
-#define BATCH_MAX_SIZE (TASKS / BATCHES)
+#define BATCH_MAX_SIZE 418
+
+// First batches are smaller since they take longer.
+const int batchSizes[BATCHES] = {308, 363, 418, 418, 418, 418, 418, 418, 418, 418, 418};
 
 typedef struct {
     const Graph *graph;
@@ -208,15 +214,16 @@ typedef struct {
 
 typedef struct {
     atomic_int workAvailable;
-    IsLoopTaskArgs *args;
+    void *args;
+
+    void (*function)(void *);
 } Task;
 
 static _Atomic int successfulObstructionPositionCount_atomic;
 
-static _Atomic int threadsRunning_atomic;
-static Task tasks[BATCHES];
-
-static void runIsLoopTask(const IsLoopTaskArgs *args) {
+// ReSharper disable once CppParameterMayBeConstPtrOrRef
+static void runIsLoopTask(void *genericArgs) {
+    const IsLoopTaskArgs *args = genericArgs;
     int sum = 0;
     for (int i = 0; i < args->batchSize; ++i) {
         sum += isLoop(args->graph, args->walls, args->starts[i], args->directions[i], args->obstacles[i]);
@@ -224,54 +231,32 @@ static void runIsLoopTask(const IsLoopTaskArgs *args) {
     successfulObstructionPositionCount_atomic += sum;
 }
 
-// ReSharper disable once CppParameterMayBeConstPtrOrRef
-static void *worker(void *arg) {
-    Task *task = arg;
-
-    while (1) {
-        while (!atomic_load_explicit(&task->workAvailable, memory_order_acquire)) _mm_pause();
-        task->workAvailable = false;
-
-        runIsLoopTask(task->args);
-
-        threadsRunning_atomic--;
-    }
-}
-
-static pthread_t threads[THREADS];
-static bool initialized = false;
-
 i64 countSuccessfulObstructionPositionsParallel(const char *ptr, const char *end) {
-    if (!initialized) {
-        for (int i = 0; i < THREADS; ++i) {
-            tasks[i].workAvailable = false;
-            pthread_create(&threads[i], NULL, worker, &tasks[i]);
-        }
-        initialized = true;
-    }
-
     Coords wallCoords[1000] = {0};
     int wallCoordsI = 0;
 
     Walls walls;
     for (int i = 0; i < N; ++i) {
         int countH = 0;
-        int countV = 0;
         for (int j = 0; j < N; ++j) {
             if (ptr[i * R + j] == '#') {
                 wallCoords[wallCoordsI++] = (Coords){j, i};
                 walls.horizontal[i][countH++] = j;
             }
-
+        }
+        walls.horizontal[i][countH] = 255;
+    }
+    for (int i = 0; i < N; ++i) {
+        int countV = 0;
+        for (int j = 0; j < N; ++j) {
             if (ptr[j * R + i] == '#') {
                 walls.vertical[i][countV++] = j;
             }
         }
-        walls.horizontal[i][countH] = 255;
         walls.vertical[i][countV] = 255;
     }
 
-    Graph graph = {0};
+    Graph graph;
 
     int edgeIndex = 1; // 0 is EDGE_EXITS_LAB
     for (int i = 0; i < wallCoordsI; ++i) {
@@ -329,13 +314,13 @@ i64 countSuccessfulObstructionPositionsParallel(const char *ptr, const char *end
 
     successfulObstructionPositionCount_atomic = 0;
 
-    IsLoopTaskArgs batches[BATCHES] = {0};
+    IsLoopTaskArgs tasks[BATCHES] = {0};
     for (int i = 0; i < BATCHES; ++i) {
-        batches[i].graph = &graph;
-        batches[i].walls = &walls;
+        tasks[i].graph = &graph;
+        tasks[i].walls = &walls;
     }
 
-    int currentBatch = 0;
+    int taskNumber = 0;
     int indexInBatch = 0;
 
     int pos = start;
@@ -351,19 +336,17 @@ i64 countSuccessfulObstructionPositionsParallel(const char *ptr, const char *end
         }
         if (c != '#') {
             if (!visited[next]) {
-                batches[currentBatch].starts[indexInBatch] = pos;
-                batches[currentBatch].directions[indexInBatch] = direction;
-                batches[currentBatch].obstacles[indexInBatch] = next;
-                batches[currentBatch].batchSize++;
+                tasks[taskNumber].starts[indexInBatch] = pos;
+                tasks[taskNumber].directions[indexInBatch] = direction;
+                tasks[taskNumber].obstacles[indexInBatch] = next;
+                tasks[taskNumber].batchSize++;
 
                 indexInBatch++;
-                if (indexInBatch == BATCH_MAX_SIZE) {
+                if (indexInBatch == batchSizes[taskNumber]) {
                     // Start working on the batch as soon as ready
-                    threadsRunning_atomic++;
-                    tasks[currentBatch].args = &batches[currentBatch];
-                    atomic_fetch_add_explicit(&tasks[currentBatch].workAvailable, true, memory_order_release);
+                    dumb_lil_threadpool_add_work(runIsLoopTask, &tasks[taskNumber], taskNumber);
 
-                    currentBatch++;
+                    taskNumber++;
                     indexInBatch = 0;
                 }
             }
@@ -376,9 +359,9 @@ i64 countSuccessfulObstructionPositionsParallel(const char *ptr, const char *end
     }
 
     // Run the last task in the main thread
-    runIsLoopTask(&batches[currentBatch]);
+    runIsLoopTask(&tasks[taskNumber]);
 
-    while (threadsRunning_atomic != 0) _mm_pause();
+    dumb_lil_threadpool_wait();
 
     return successfulObstructionPositionCount_atomic;
 }

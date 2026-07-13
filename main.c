@@ -12,7 +12,8 @@
 #include "7.h"
 #include "8.h"
 
-#include "file-utils.h"
+#include "dumb_lil_threadpool.h"
+#include "platform.h"
 
 int magicSearch();
 
@@ -22,6 +23,7 @@ typedef struct {
     int runs;
     i64 expected;
     char *fileNameOverride;
+    int threadPoolSize;
 } Puzzle;
 
 const Puzzle PUZZLES[][3] = {
@@ -49,8 +51,8 @@ const Puzzle PUZZLES[][3] = {
     },
     {
         {countPointsVisitedByGuard, 800000, 4433}, // 0.952 us
-        {countSuccessfulObstructionPositions, 10000, 1516}, // 195 us
-        {countSuccessfulObstructionPositionsParallel, 10000, 1516} // 78.6 us
+        {countSuccessfulObstructionPositions, 10000, 1516}, // 187 us
+        {countSuccessfulObstructionPositionsParallel, 10000, 1516, NULL, 10} // 61.5 us
     },
     {{}, {}},
     {
@@ -77,11 +79,16 @@ int main(const int argc, const char **argv) {
 
     const Puzzle puzzle = PUZZLES[day - 1][part - 1];
 
+
     char fileNameBuffer[100];
 
     sprintf(fileNameBuffer, "../input/%d.txt", day);
 
+    if (puzzle.threadPoolSize) dumb_lil_threadpool_init(puzzle.threadPoolSize);
+
     runAndBenchmark(fileNameBuffer, puzzle);
+
+    if (puzzle.threadPoolSize) dumb_lil_threadpool_destroy();
 }
 
 volatile i64 sink = 0;

@@ -4,7 +4,7 @@
 
     #include "7.h"
 
-#include "file-utils.h"
+#include "platform.h"
 
 
     static uint64_t myParseInt64(char **s) {

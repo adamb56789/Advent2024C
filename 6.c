@@ -286,22 +286,25 @@ i64 countSuccessfulObstructionPositions(const char *ptr, const char *end) {
     Walls walls;
     for (int i = 0; i < N; ++i) {
         int countH = 0;
-        int countV = 0;
         for (int j = 0; j < N; ++j) {
             if (ptr[i * R + j] == '#') {
                 wallCoords[wallCoordsI++] = (Coords){j, i};
                 walls.horizontal[i][countH++] = j;
             }
-
+        }
+        walls.horizontal[i][countH] = 255;
+    }
+    for (int i = 0; i < N; ++i) {
+        int countV = 0;
+        for (int j = 0; j < N; ++j) {
             if (ptr[j * R + i] == '#') {
                 walls.vertical[i][countV++] = j;
             }
         }
-        walls.horizontal[i][countH] = 255;
         walls.vertical[i][countV] = 255;
     }
 
-    Graph graph = {0};
+    Graph graph;
 
     int edgeIndex = 1; // 0 is EDGE_EXITS_LAB
     for (int i = 0; i < wallCoordsI; ++i) {
