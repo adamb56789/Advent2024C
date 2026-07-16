@@ -394,4 +394,9 @@ i64 countSuccessfulObstructionPositions(const char *ptr, const char *end) {
  * - Calculating the obstacle position in isLoop instead of passing it in
  * - Updating the edge graph at the start of each isLoop and reverting it
  * - Replacing functions per direction with LUTs
+ * - (parallel only) maintaining a "main walk edges visited" array and using it in addition to each isLoop()'s own
+ *   - using a mainWalkEdgesFirstVisitedTask shared between all threads which instead of storing a 0/1 stores when that edge
+ *     was visited then comparing to the current task/life number, avoiding copying a frozen view into each batch and allowing
+ *     it to use the most up-to-date data instead of the state at the start of the batch
+ *   - timing of the above was marginal <1 us difference, it short circuits loops with it often, but slightly not worth the cost
  */
