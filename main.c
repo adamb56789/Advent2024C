@@ -64,7 +64,7 @@ const Puzzle PUZZLES[][3] = {
         {countHarmonicAntinodes, 1000000, 949} // 1.349 us
     },
     {
-        {computeCompactedFilesystemChecksum, 50000, 6323641412437}, // 29.9 us
+        {computeCompactedFilesystemChecksum, 100000, 6323641412437}, // 11.3 us
         {}
     }
 };
