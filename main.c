@@ -11,6 +11,7 @@
 #include "6_parallel.h"
 #include "7.h"
 #include "8.h"
+#include "9.h"
 
 #include "dumb_lil_threadpool.h"
 #include "platform.h"
@@ -54,10 +55,17 @@ const Puzzle PUZZLES[][3] = {
         {countSuccessfulObstructionPositions, 10000, 1516}, // 187 us
         {countSuccessfulObstructionPositionsParallel, 10000, 1516, NULL, 10} // 61.5 us
     },
-    {{}, {}},
+    {
+        {totalCalibrationResult, 50000, 7710205485870}, // 35.1 us
+        {totalConcatCalibrationResult, 10000, 20928985450275} // 74.4 us
+    },
     {
         {countAntinodes, 1000000, 269}, // 0.686 us
         {countHarmonicAntinodes, 1000000, 949} // 1.349 us
+    },
+    {
+        {computeCompactedFilesystemChecksum, 50000, 6323641412437}, // 29.9 us
+        {}
     }
 };
 

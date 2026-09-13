@@ -30,4 +30,6 @@ add_executable(Advent2024C main.c
         7.h
         8.c
         8.h
+        9.c
+        9.h
 )

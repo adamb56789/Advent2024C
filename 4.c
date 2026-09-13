@@ -6,7 +6,7 @@ static const u64 SIXTY_ONE_BITS = 0x1FFFFFFFFFFFFFFF;
 static const u64 EIGHTEEN_BITS = 0x3FFFF;
 
 
-static i256 shiftAdd256(
+static i256 shiftAnd256(
     const i256 mx, const i8 sx, const i256 mm, const i8 sm,
     const i256 ma, const i8 sa, const i256 ms, const i8 ss
 ) {
@@ -54,8 +54,8 @@ i64 countXmas(const char *start, const char *end) {
 
         // Horizontal XMAS all within the current line. The shifts and ands and together a bit of x with the corresponding bit of m next to it and so on.
         // or forward and reverse before popcount because we know that a string can't be both XMAS and SAMX at the same time and or is faster than popcount
-        const i256 forward = shiftAdd256(mx4, 0, mm4, 1, ma4, 2, ms4, 3);
-        const i256 reverse = shiftAdd256(mx4, 3, mm4, 2, ma4, 1, ms4, 0);
+        const i256 forward = shiftAnd256(mx4, 0, mm4, 1, ma4, 2, ms4, 3);
+        const i256 reverse = shiftAnd256(mx4, 3, mm4, 2, ma4, 1, ms4, 0);
         pops = pops + _mm256_popcnt_epi64(forward | reverse);
 
         // Vertical is the same principal as horizontal but using the above rows instead
@@ -66,13 +66,13 @@ i64 countXmas(const char *start, const char *end) {
         pops = pops + _mm256_popcnt_epi64((downward | upward) & SIXTY_ONE_BITS);
 
         // Combine the two for ↘
-        const i256 forwardAndDown = shiftAdd256(mx1, 0, mm2, 1, ma3, 2, ms4, 3);
-        const i256 reverseAndUp = shiftAdd256(mx4, 3, mm3, 2, ma2, 1, ms1, 0);
+        const i256 forwardAndDown = shiftAnd256(mx1, 0, mm2, 1, ma3, 2, ms4, 3);
+        const i256 reverseAndUp = shiftAnd256(mx4, 3, mm3, 2, ma2, 1, ms1, 0);
         pops = pops + _mm256_popcnt_epi64(forwardAndDown | reverseAndUp);
 
         // ↙
-        const i256 reverseAndDown = shiftAdd256(mx1, 3, mm2, 2, ma3, 1, ms4, 0);
-        const i256 forwardAndUp = shiftAdd256(mx4, 0, mm3, 1, ma2, 2, ms1, 3);
+        const i256 reverseAndDown = shiftAnd256(mx1, 3, mm2, 2, ma3, 1, ms4, 0);
+        const i256 forwardAndUp = shiftAnd256(mx4, 0, mm3, 1, ma2, 2, ms1, 3);
         pops = pops + _mm256_popcnt_epi64(reverseAndDown | forwardAndUp);
     }
 

@@ -4,6 +4,9 @@
 
 #ifndef SEVEN_H
 #define SEVEN_H
-void seven_1();
-void seven_2();
+
+#include "shared.h"
+
+i64 totalCalibrationResult(const char *ptr, const char *end);
+i64 totalConcatCalibrationResult(const char *ptr, const char *end);
 #endif //SEVEN_H
