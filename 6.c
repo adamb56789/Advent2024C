@@ -304,7 +304,7 @@ i64 countSuccessfulObstructionPositions(const char *ptr, const char *end) {
         walls.vertical[i][countV] = 255;
     }
 
-    Graph graph;
+    Graph graph = {0};
 
     int edgeIndex = 1; // 0 is EDGE_EXITS_LAB
     for (int i = 0; i < wallCoordsI; ++i) {
