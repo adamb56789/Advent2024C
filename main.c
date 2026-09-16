@@ -65,7 +65,7 @@ const Puzzle PUZZLES[][3] = {
     },
     {
         {computeCompactedFilesystemChecksum, 100000, 6323641412437}, // 11.3 us
-        {defragmentedCompactedFilesystemChecksum, 100000, 6351801932670} // 20.7 us
+        {defragmentedCompactedFilesystemChecksum, 100000, 6351801932670} // 20.8 us
     }
 };
 

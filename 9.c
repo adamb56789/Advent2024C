@@ -67,6 +67,7 @@ i64 computeCompactedFilesystemChecksum(const char *ptr, const char *end) {
 }
 
 i64 defragmentedCompactedFilesystemChecksum(const char *ptr, const char *end) {
+    // No need to zero these arrays, but it makes no difference or possibly slower (cache prefetch?)
     u8 files[N] = {0};
     u8 spaces[N] = {0};
 
@@ -78,10 +79,12 @@ i64 defragmentedCompactedFilesystemChecksum(const char *ptr, const char *end) {
 
     int fileStartPosition[N] = {0};
     int spaceStartPosition[N] = {0};
-    spaceStartPosition[0] = files[0];
-    for (int i = 1; i < N; ++i) {
-        fileStartPosition[i] = fileStartPosition[i - 1] + files[i - 1] + spaces[i - 1];
-        spaceStartPosition[i] = fileStartPosition[i] + files[i];
+
+    int offset = 0;
+    for (int i = 0; i < N; ++i) {
+        fileStartPosition[i] = offset;
+        spaceStartPosition[i] = offset + files[i];
+        offset += files[i] + spaces[i];
     }
 
     int index_this_file_size_was_last_placed[10] = {0};
