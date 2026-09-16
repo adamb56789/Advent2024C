@@ -390,10 +390,10 @@ i64 countSuccessfulObstructionPositions(const char *ptr, const char *end) {
 }
 
 /* Non-exhaustive list of things that didn't make it faster
- * - Using an array of structs instead of struct of arrays to batch arguments (1 us slower).
  * - Calculating the obstacle position in isLoop instead of passing it in
  * - Updating the edge graph at the start of each isLoop and reverting it
  * - Replacing functions per direction with LUTs
+ * - (parallel only) Using an array of structs instead of struct of arrays to batch arguments (1 us slower).
  * - (parallel only) maintaining a "main walk edges visited" array and using it in addition to each isLoop()'s own
  *   - using a mainWalkEdgesFirstVisitedTask shared between all threads which instead of storing a 0/1 stores when that edge
  *     was visited then comparing to the current task/life number, avoiding copying a frozen view into each batch and allowing

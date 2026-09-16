@@ -8,6 +8,6 @@
 #include "shared.h"
 
 i64 computeCompactedFilesystemChecksum(const char *ptr, const char *end);
-i64 idek(const char *ptr, const char *end);
+i64 defragmentedCompactedFilesystemChecksum(const char *ptr, const char *end);
 
 #endif //ADVENT2024C_9_H

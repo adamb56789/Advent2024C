@@ -65,7 +65,7 @@ const Puzzle PUZZLES[][3] = {
     },
     {
         {computeCompactedFilesystemChecksum, 100000, 6323641412437}, // 11.3 us
-        {}
+        {defragmentedCompactedFilesystemChecksum, 100000, 6351801932670} // 20.7 us
     }
 };
 
@@ -90,7 +90,11 @@ int main(const int argc, const char **argv) {
 
     char fileNameBuffer[100];
 
-    sprintf(fileNameBuffer, "../input/%d.txt", day);
+    if (puzzle.fileNameOverride) {
+        sprintf(fileNameBuffer, "../input/%s", puzzle.fileNameOverride);
+    } else {
+        sprintf(fileNameBuffer, "../input/%d.txt", day);
+    }
 
     if (puzzle.threadPoolSize) dumb_lil_threadpool_init(puzzle.threadPoolSize);
 
