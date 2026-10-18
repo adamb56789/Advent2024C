@@ -15,21 +15,20 @@ typedef struct {
 } Position;
 
 typedef struct {
-    Position items[4];
+    u16 items[4];
     u8 length;
 } PositionList4;
 
 typedef struct {
-    Position items[10];
+    u16 items[10];
     u8 length;
 } PositionList10;
 
 
-static void set_add(PositionList10 *next, const Position p) {
+static void set_add(PositionList10 *next, const u16 p) {
     bool found = false;
-    const u16 atrociousCast = *(u16 *) &p;
     for (int k = 0; k < next->length; ++k) {
-        if (*(u16 *) &next->items[k] == atrociousCast) {
+        if (next->items[k] == p) {
             found = true;
             break;
         }
@@ -48,14 +47,15 @@ i64 sumTrailheadScores(const char *ptr, const char *end) {
         ptr++;
     }
 
-    PositionList4 adjacency[N][N] = {};
+#define IDX(x, y) ((y) * N + (x))
+    PositionList4 adjacency[N * N] = {};
     for (int y = 0; y < N; ++y) {
         for (int x = 0; x < N - 1; ++x) {
             if (map[y][x] + 1 == map[y][x + 1]) {
-                append(adjacency[y][x], ((Position){x + 1, y}));
+                append(adjacency[IDX(x, y)], IDX(x+1, y));
             }
             if (map[y][x] == map[y][x + 1] + 1) {
-                append(adjacency[y][x+1], ((Position){x, y}));
+                append(adjacency[IDX(x+1, y)], IDX(x, y));
             }
         }
     }
@@ -63,10 +63,10 @@ i64 sumTrailheadScores(const char *ptr, const char *end) {
     for (int y = 0; y < N - 1; ++y) {
         for (int x = 0; x < N; ++x) {
             if (map[y][x] + 1 == map[y + 1][x]) {
-                append(adjacency[y][x], ((Position){x, y+1}));
+                append(adjacency[IDX(x, y)], IDX(x, y+1));
             }
             if (map[y][x] == map[y + 1][x] + 1) {
-                append(adjacency[y+1][x], ((Position){x, y}));
+                append(adjacency[IDX(x, y+1)], IDX(x, y));
             }
         }
     }
@@ -78,12 +78,12 @@ i64 sumTrailheadScores(const char *ptr, const char *end) {
     for (int y = 0; y < N; ++y) {
         for (int x = 0; x < N; ++x) {
             if (map[y][x] != 0) continue;
-            append(currentSet, ((Position){x, y}));
+            append(currentSet, IDX(x, y));
 
             for (int height = 0; height < 9; ++height) {
                 for (int i = 0; i < currentSet.length; ++i) {
-                    const Position currentPos = currentSet.items[i];
-                    const PositionList4 adjacentPositions = adjacency[currentPos.y][currentPos.x];
+                    const u16 currentPos = currentSet.items[i];
+                    const PositionList4 adjacentPositions = adjacency[currentPos];
 
                     for (int j = 0; j < adjacentPositions.length; ++j) {
                         set_add(&nextSet, adjacentPositions.items[j]);
