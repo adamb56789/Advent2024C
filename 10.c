@@ -20,7 +20,7 @@ typedef struct {
 } PositionList4;
 
 typedef struct {
-    Position items[40];
+    Position items[10];
     u8 length;
 } PositionList10;
 
