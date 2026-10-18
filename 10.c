@@ -27,8 +27,9 @@ typedef struct {
 
 static void set_add(PositionList10 *next, const Position p) {
     bool found = false;
+    const u16 atrociousCast = *(u16 *) &p;
     for (int k = 0; k < next->length; ++k) {
-        if (p.x == next->items[k].x && p.y == next->items[k].y) {
+        if (*(u16 *) &next->items[k] == atrociousCast) {
             found = true;
             break;
         }
@@ -70,20 +71,6 @@ i64 sumTrailheadScores(const char *ptr, const char *end) {
         }
     }
 
-    for (int y = 0; y < N; ++y) {
-        for (int x = 0; x < N; ++x) {
-            const PositionList4 list = adjacency[y][x];
-            if (list.length > 0) {
-                debug("%d,%d: ", x, y);
-                for (int k = 0; k < list.length; ++k) {
-                    const Position p = list.items[k];
-                    debug("%d,%d ", p.x, p.y);
-                }
-                debug("\n");
-            }
-        }
-    }
-
     i64 sum = 0;
 
     PositionList10 currentSet = {};
@@ -93,11 +80,8 @@ i64 sumTrailheadScores(const char *ptr, const char *end) {
             if (map[y][x] != 0) continue;
             append(currentSet, ((Position){x, y}));
 
-            debug("%d, %d\n", x, y);
-
             for (int height = 0; height < 9; ++height) {
                 for (int i = 0; i < currentSet.length; ++i) {
-
                     const Position currentPos = currentSet.items[i];
                     const PositionList4 adjacentPositions = adjacency[currentPos.y][currentPos.x];
 
@@ -105,10 +89,6 @@ i64 sumTrailheadScores(const char *ptr, const char *end) {
                         set_add(&nextSet, adjacentPositions.items[j]);
                     }
                 }
-                for (int i = 0; i < nextSet.length; ++i) {
-                    debug("(%d, %d) ", nextSet.items[i].x, nextSet.items[i].y);
-                }
-                debug("\n");
 
                 currentSet = nextSet;
                 nextSet.length = 0;
