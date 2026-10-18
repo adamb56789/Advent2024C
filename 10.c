@@ -25,20 +25,27 @@ typedef struct {
 } PositionList10;
 
 
-static void set_add(PositionList10 *next, const u16 p) {
+static void set_add(PositionList10 *xs, const u16 x) {
     bool found = false;
-    for (int k = 0; k < next->length; ++k) {
-        if (next->items[k] == p) {
+    for (int k = 0; k < xs->length; ++k) {
+        if (xs->items[k] == x) {
             found = true;
             break;
         }
     }
     if (!found) {
-        appendp(next, p);
+        appendp(xs, x);
+    }
+}
+
+static void set_add_all(PositionList10 *xs, const PositionList10 *ys) {
+    for (int i = 0; i < ys->length; ++i) {
+        set_add(xs, ys->items[i]);
     }
 }
 
 i64 sumTrailheadScores(const char *ptr, const char *end) {
+    // Parse file into NxN grid of height
     u8 map[N][N];
     for (int y = 0; y < N; ++y) {
         for (int x = 0; x < N; ++x) {
@@ -46,6 +53,9 @@ i64 sumTrailheadScores(const char *ptr, const char *end) {
         }
         ptr++;
     }
+
+    // Create an adjacency list from each index to the indexes you can reach from it by walking up 1
+    // The index is the row-major index of the map
 
 #define IDX(x, y) ((y) * N + (x))
     PositionList4 adjacency[N * N] = {};
@@ -71,31 +81,42 @@ i64 sumTrailheadScores(const char *ptr, const char *end) {
         }
     }
 
-    i64 sum = 0;
+    // A list of trailheads that can reach this position at the current height
+    PositionList10 trailheads[N * N] = {};
 
-    PositionList10 currentSet = {};
-    PositionList10 nextSet = {};
-    for (int y = 0; y < N; ++y) {
-        for (int x = 0; x < N; ++x) {
-            if (map[y][x] != 0) continue;
-            append(currentSet, IDX(x, y));
+    // At height 0 each position reaches only itself
+    for (int i = 0; i < N * N; ++i) {
+        if (map[0][i] != 0) continue;
+        append(trailheads[i], i);
+    }
 
-            for (int height = 0; height < 9; ++height) {
-                for (int i = 0; i < currentSet.length; ++i) {
-                    const u16 currentPos = currentSet.items[i];
-                    const PositionList4 adjacentPositions = adjacency[currentPos];
+    // TODO there is definitely an easier way of doing this
 
-                    for (int j = 0; j < adjacentPositions.length; ++j) {
-                        set_add(&nextSet, adjacentPositions.items[j]);
-                    }
-                }
+    // Walk uphill in all possible ways from each position of the current height using the adjacency list.
+    // Each new position is at height + 1, and can be reached from all the trailheads that led to where we started from.
+    // Add to a set as there could be multiple ways to reach here.
+    for (int height = 0; height < 9; ++height) {
+        for (int i = 0; i < N * N; ++i) {
+            if (map[0][i] != height) continue;
 
-                currentSet = nextSet;
-                nextSet.length = 0;
+            for (int j = 0; j < adjacency[i].length; ++j) {
+                const u16 adjacentPosition = adjacency[i].items[j];
+                set_add_all(&trailheads[adjacentPosition], trailheads[i].items);
             }
-            sum += currentSet.length;
+
+            // Clear the current heights as we re-use the same memory.
+            trailheads[i].length = 0;
         }
     }
+
+    // We are left with a list of trailheads that can reach each summit, instead of a list of summits that can be reached from each trailhead.
+    // The total number of edges in this graph is the same either way.
+
+    i64 sum = 0;
+    for (int i = 0; i < N * N; ++i) {
+        sum += trailheads[i].length;
+    }
+
     return sum;
 }
 
