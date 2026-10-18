@@ -3,6 +3,7 @@
 #include <stdlib.h>
 
 #include "1.h"
+#include "10.h"
 #include "2.h"
 #include "3.h"
 #include "4.h"
@@ -66,6 +67,9 @@ const Puzzle PUZZLES[][3] = {
     {
         {computeCompactedFilesystemChecksum, 100000, 6323641412437}, // 11.3 us
         {defragmentedCompactedFilesystemChecksum, 100000, 6351801932670} // 20.8 us
+    },
+    {
+        {sumTrailheadScores, 30000, 717} // 32.6 us
     }
 };
 
