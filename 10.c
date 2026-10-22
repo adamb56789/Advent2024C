@@ -8,6 +8,7 @@
 
 #define append(xs, x) xs.items[xs.length++] = x;
 #define appendp(xs, x)  ((xs)->items[(xs)->length++] = (x))
+#define IDX(x, y) ((y) * N + (x))
 
 typedef struct {
     u8 x;
@@ -23,6 +24,11 @@ typedef struct {
     u16 items[10];
     u8 length;
 } PositionList10;
+
+typedef struct {
+    u16 items[350];
+    u16 length;
+} PositionList350;
 
 
 static void set_add(PositionList10 *xs, const u16 x) {
@@ -45,19 +51,21 @@ static void set_add_all(PositionList10 *xs, const PositionList10 *ys) {
 }
 
 i64 sumTrailheadScores(const char *ptr, const char *end) {
+    PositionList350 heightIndexes[10] = {};
+
     // Parse file into NxN grid of height
     u8 map[N][N];
     for (int y = 0; y < N; ++y) {
         for (int x = 0; x < N; ++x) {
-            map[y][x] = *ptr++ - '0';
+            const u8 height = *ptr++ - '0';
+            map[y][x] = height;
+            append(heightIndexes[height], IDX(x, y));
         }
         ptr++;
     }
 
     // Create an adjacency list from each index to the indexes you can reach from it by walking up 1
     // The index is the row-major index of the map
-
-#define IDX(x, y) ((y) * N + (x))
     PositionList4 adjacency[N * N] = {};
     for (int y = 0; y < N; ++y) {
         for (int x = 0; x < N - 1; ++x) {
@@ -85,8 +93,8 @@ i64 sumTrailheadScores(const char *ptr, const char *end) {
     PositionList10 trailheads[N * N] = {};
 
     // At height 0 each position reaches only itself
-    for (int i = 0; i < N * N; ++i) {
-        if (map[0][i] != 0) continue;
+    for (int k = 0; k < heightIndexes[0].length; ++k) {
+        const u16 i = heightIndexes[0].items[k];
         append(trailheads[i], i);
     }
 
@@ -96,9 +104,8 @@ i64 sumTrailheadScores(const char *ptr, const char *end) {
     // Each new position is at height + 1, and can be reached from all the trailheads that led to where we started from.
     // Add to a set as there could be multiple ways to reach here.
     for (int height = 0; height < 9; ++height) {
-        for (int i = 0; i < N * N; ++i) {
-            if (map[0][i] != height) continue;
-
+        for (int k = 0; k < heightIndexes[height].length; ++k) {
+            const u16 i = heightIndexes[height].items[k];
             for (int j = 0; j < adjacency[i].length; ++j) {
                 const u16 adjacentPosition = adjacency[i].items[j];
                 set_add_all(&trailheads[adjacentPosition], trailheads[i].items);
