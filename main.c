@@ -69,7 +69,7 @@ const Puzzle PUZZLES[][3] = {
         {defragmentedCompactedFilesystemChecksum, 100000, 6351801932670} // 20.8 us
     },
     {
-        {sumTrailheadScores, 100000, 717} // 10.9 us
+        {sumTrailheadScores, 100000, 717} // 10.4 us
     }
 };
 

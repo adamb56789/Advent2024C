@@ -42,7 +42,7 @@ static void soa_set_add(TrailheadsSoa *soa, const u16 i, const u16 x) {
 }
 
 static void soa_set_add_all(TrailheadsSoa *soa, const u16 i, const TrailheadsSoa *y_soa, const u16 j) {
-    for (int k = 0; k < y_soa->length[j]; ++k) {
+    for (int k = 0; y_soa->items[j][k] != 0; ++k) {
         soa_set_add(soa, i, y_soa->items[j][k]);
     }
 }
@@ -107,7 +107,7 @@ i64 sumTrailheadScores(const char *ptr, const char *end) {
     for (int height = 0; height < 9; ++height) {
         for (int k = 0; k < heightIndexes[height].length; ++k) {
             const u16 i = heightIndexes[height].items[k];
-            for (int j = 0; j < adjacency[i].length; ++j) {
+            for (int j = 0; adjacency[i].items[j] != 0; ++j) {
                 const u16 adjacentPosition = adjacency[i].items[j];
                 soa_set_add_all(&trailhead, adjacentPosition, &trailhead, i);
             }
