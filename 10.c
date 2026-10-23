@@ -7,7 +7,6 @@
 #define N 53
 
 #define append(xs, x) xs.items[xs.length++] = x;
-#define append_p(xs, x) xs->items[xs->length++] = x;
 #define soa_append(soa, i, x) soa.items[i][soa.length[i]++] = x;
 #define soa_append_p(soa, i, x) soa->items[i][soa->length[i]++] = x;
 #define IDX(x, y) ((y) * N + (x))
@@ -56,11 +55,13 @@ i64 sumTrailheadScores(const char *ptr, const char *end) {
         for (int x = 0; x < N; ++x) {
             const u8 height = *ptr++ - '0';
             map[y][x] = height;
-            append(heightIndexes[height], IDX(x, y));
         }
         ptr++;
     }
-    // 1.57
+    for (int i = 0; i < N * N; i++) {
+        append(heightIndexes[map[0][i]], i);
+    }
+    // 1.30
 
     // Create an adjacency list from each index to the indexes you can reach from it by walking up 1
     // The index is the row-major index of the map
