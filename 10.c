@@ -13,9 +13,9 @@
 #define IDX(x, y) ((y) * N + (x))
 
 typedef struct {
-    u16 items[4];
-    u8 length;
-} PositionList4;
+    u16 items[N * N][4];
+    u8 length[N * N];
+} AdjacencySoa;
 
 typedef struct {
     u16 items[350];
@@ -28,22 +28,22 @@ typedef struct {
 } TrailheadsSoa;
 
 
-static void soa_set_add(TrailheadsSoa *soa, const u16 i, const u16 x) {
+static void set_add(TrailheadsSoa *xs, const u16 i, const u16 x) {
     bool found = false;
-    for (int j = 0; j < soa->length[i]; ++j) {
-        if (soa->items[i][j] == x) {
+    for (int j = 0; j < xs->length[i]; ++j) {
+        if (xs->items[i][j] == x) {
             found = true;
             break;
         }
     }
     if (!found) {
-        soa_append_p(soa, i, x);
+        soa_append_p(xs, i, x);
     }
 }
 
-static void soa_set_add_all(TrailheadsSoa *soa, const u16 i, const TrailheadsSoa *y_soa, const u16 j) {
-    for (int k = 0; y_soa->items[j][k] != 0; ++k) {
-        soa_set_add(soa, i, y_soa->items[j][k]);
+static void set_add_all(TrailheadsSoa *xs, const u16 i, const TrailheadsSoa *ys, const u16 j) {
+    for (int k = 0; ys->items[j][k] != 0; ++k) {
+        set_add(xs, i, ys->items[j][k]);
     }
 }
 
@@ -64,14 +64,14 @@ i64 sumTrailheadScores(const char *ptr, const char *end) {
 
     // Create an adjacency list from each index to the indexes you can reach from it by walking up 1
     // The index is the row-major index of the map
-    PositionList4 adjacency[N * N] = {};
+    AdjacencySoa adjacency = {};
     for (int y = 0; y < N; ++y) {
         for (int x = 0; x < N - 1; ++x) {
             if (map[y][x] + 1 == map[y][x + 1]) {
-                append(adjacency[IDX(x, y)], IDX(x+1, y));
+                soa_append(adjacency, IDX(x, y), IDX(x+1, y));
             }
             if (map[y][x] == map[y][x + 1] + 1) {
-                append(adjacency[IDX(x+1, y)], IDX(x, y));
+                soa_append(adjacency, IDX(x+1, y), IDX(x, y));
             }
         }
     }
@@ -79,14 +79,14 @@ i64 sumTrailheadScores(const char *ptr, const char *end) {
     for (int y = 0; y < N - 1; ++y) {
         for (int x = 0; x < N; ++x) {
             if (map[y][x] + 1 == map[y + 1][x]) {
-                append(adjacency[IDX(x, y)], IDX(x, y+1));
+                soa_append(adjacency, IDX(x, y), IDX(x, y+1));
             }
             if (map[y][x] == map[y + 1][x] + 1) {
-                append(adjacency[IDX(x, y+1)], IDX(x, y));
+                soa_append(adjacency, IDX(x, y+1), IDX(x, y));
             }
         }
     }
-    // 3.96
+    // 3.82
 
     // A list of trailheads that can reach this position at the current height
     TrailheadsSoa trailhead = {};
@@ -97,7 +97,7 @@ i64 sumTrailheadScores(const char *ptr, const char *end) {
         soa_append(trailhead, i, i);
     }
 
-    // 4.33
+    // 4.20
 
     // TODO there is definitely an easier way of doing this
 
@@ -107,16 +107,15 @@ i64 sumTrailheadScores(const char *ptr, const char *end) {
     for (int height = 0; height < 9; ++height) {
         for (int k = 0; k < heightIndexes[height].length; ++k) {
             const u16 i = heightIndexes[height].items[k];
-            for (int j = 0; adjacency[i].items[j] != 0; ++j) {
-                const u16 adjacentPosition = adjacency[i].items[j];
-                soa_set_add_all(&trailhead, adjacentPosition, &trailhead, i);
+            for (int j = 0; j < adjacency.length[i]; ++j) {
+                const u16 adjacentPosition = adjacency.items[i][j];
+                set_add_all(&trailhead, adjacentPosition, &trailhead, i);
             }
 
             // Clear the current heights as we re-use the same memory.
             trailhead.length[i] = 0;
         }
     }
-    // 10.8
 
     // We are left with a list of trailheads that can reach each summit, instead of a list of summits that can be reached from each trailhead.
     // The total number of edges in this graph is the same either way.
@@ -126,7 +125,7 @@ i64 sumTrailheadScores(const char *ptr, const char *end) {
         sum += trailhead.length[i];
     }
 
-    // 10.9
+    // 10.1
 
     return sum;
 }
