@@ -7,13 +7,10 @@
 #define N 53
 
 #define append(xs, x) xs.items[xs.length++] = x;
-#define appendp(xs, x)  ((xs)->items[(xs)->length++] = (x))
+#define append_p(xs, x) xs->items[xs->length++] = x;
+#define soa_append(soa, i, x) soa.items[i][soa.length[i]++] = x;
+#define soa_append_p(soa, i, x) soa->items[i][soa->length[i]++] = x;
 #define IDX(x, y) ((y) * N + (x))
-
-typedef struct {
-    u8 x;
-    u8 y;
-} Position;
 
 typedef struct {
     u16 items[4];
@@ -21,32 +18,32 @@ typedef struct {
 } PositionList4;
 
 typedef struct {
-    u16 items[10];
-    u8 length;
-} PositionList10;
-
-typedef struct {
     u16 items[350];
     u16 length;
 } PositionList350;
 
+typedef struct {
+    u16 items[N * N][10];
+    u8 length[N * N];
+} TrailheadsSoa;
 
-static void set_add(PositionList10 *xs, const u16 x) {
+
+static void soa_set_add(TrailheadsSoa *soa, const u16 i, const u16 x) {
     bool found = false;
-    for (int k = 0; k < xs->length; ++k) {
-        if (xs->items[k] == x) {
+    for (int j = 0; j < soa->length[i]; ++j) {
+        if (soa->items[i][j] == x) {
             found = true;
             break;
         }
     }
     if (!found) {
-        appendp(xs, x);
+        soa_append_p(soa, i, x);
     }
 }
 
-static void set_add_all(PositionList10 *xs, const PositionList10 *ys) {
-    for (int i = 0; i < ys->length; ++i) {
-        set_add(xs, ys->items[i]);
+static void soa_set_add_all(TrailheadsSoa *soa, const u16 i, const TrailheadsSoa *y_soa, const u16 j) {
+    for (int k = 0; k < y_soa->length[j]; ++k) {
+        soa_set_add(soa, i, y_soa->items[j][k]);
     }
 }
 
@@ -63,6 +60,7 @@ i64 sumTrailheadScores(const char *ptr, const char *end) {
         }
         ptr++;
     }
+    // 1.57
 
     // Create an adjacency list from each index to the indexes you can reach from it by walking up 1
     // The index is the row-major index of the map
@@ -88,15 +86,18 @@ i64 sumTrailheadScores(const char *ptr, const char *end) {
             }
         }
     }
+    // 3.96
 
     // A list of trailheads that can reach this position at the current height
-    PositionList10 trailheads[N * N] = {};
+    TrailheadsSoa trailhead = {};
 
     // At height 0 each position reaches only itself
     for (int k = 0; k < heightIndexes[0].length; ++k) {
         const u16 i = heightIndexes[0].items[k];
-        append(trailheads[i], i);
+        soa_append(trailhead, i, i);
     }
+
+    // 4.33
 
     // TODO there is definitely an easier way of doing this
 
@@ -108,21 +109,24 @@ i64 sumTrailheadScores(const char *ptr, const char *end) {
             const u16 i = heightIndexes[height].items[k];
             for (int j = 0; j < adjacency[i].length; ++j) {
                 const u16 adjacentPosition = adjacency[i].items[j];
-                set_add_all(&trailheads[adjacentPosition], trailheads[i].items);
+                soa_set_add_all(&trailhead, adjacentPosition, &trailhead, i);
             }
 
             // Clear the current heights as we re-use the same memory.
-            trailheads[i].length = 0;
+            trailhead.length[i] = 0;
         }
     }
+    // 10.8
 
     // We are left with a list of trailheads that can reach each summit, instead of a list of summits that can be reached from each trailhead.
     // The total number of edges in this graph is the same either way.
 
     i64 sum = 0;
     for (int i = 0; i < N * N; ++i) {
-        sum += trailheads[i].length;
+        sum += trailhead.length[i];
     }
+
+    // 10.9
 
     return sum;
 }
