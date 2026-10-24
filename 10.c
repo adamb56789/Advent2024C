@@ -93,6 +93,7 @@ i64 sumTrailheadScores(const char *ptr, const char *end) {
         currentBits = nextBits;
         nextBits = tmp;
 
+        // Only need to clear what we actually touched. This was faster than using bitsByHeight[10] and not clearing.
         memset(nextBits, 0, heightLengths[height] * sizeof(i512));
     }
     // 6.54
