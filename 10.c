@@ -21,30 +21,6 @@ typedef struct {
     u16 length;
 } PositionList350;
 
-typedef struct {
-    u16 items[N * N][10];
-    u8 length[N * N];
-} TrailheadsSoa;
-
-
-static void set_add(TrailheadsSoa *xs, const u16 i, const u16 x) {
-    bool found = false;
-    for (int j = 0; j < xs->length[i]; ++j) {
-        if (xs->items[i][j] == x) {
-            found = true;
-            break;
-        }
-    }
-    if (!found) {
-        soa_append_p(xs, i, x);
-    }
-}
-
-static void set_add_all(TrailheadsSoa *xs, const u16 i, const TrailheadsSoa *ys, const u16 j) {
-    for (int k = 0; ys->items[j][k] != 0; ++k) {
-        set_add(xs, i, ys->items[j][k]);
-    }
-}
 
 i64 sumTrailheadScores(const char *ptr, const char *end) {
     PositionList350 heightIndexes[10] = {};
@@ -87,18 +63,19 @@ i64 sumTrailheadScores(const char *ptr, const char *end) {
             }
         }
     }
-    // 3.82
+    // 3.51
 
     // A list of trailheads that can reach this position at the current height
-    TrailheadsSoa trailhead = {};
+    i512 bits[N * N] = {};
 
     // At height 0 each position reaches only itself
     for (int k = 0; k < heightIndexes[0].length; ++k) {
         const u16 i = heightIndexes[0].items[k];
-        soa_append(trailhead, i, i);
+
+        ((u64 *) &bits[i])[k / 64] |= 1UL << (k % 64);
     }
 
-    // 4.20
+    // 4.36
 
     // TODO there is definitely an easier way of doing this
 
@@ -110,23 +87,27 @@ i64 sumTrailheadScores(const char *ptr, const char *end) {
             const u16 i = heightIndexes[height].items[k];
             for (int j = 0; j < adjacency.length[i]; ++j) {
                 const u16 adjacentPosition = adjacency.items[i][j];
-                set_add_all(&trailhead, adjacentPosition, &trailhead, i);
-            }
 
-            // Clear the current heights as we re-use the same memory.
-            trailhead.length[i] = 0;
+                bits[adjacentPosition] = bits[adjacentPosition] | bits[i];
+            }
         }
     }
+    // 7.64
 
     // We are left with a list of trailheads that can reach each summit, instead of a list of summits that can be reached from each trailhead.
     // The total number of edges in this graph is the same either way.
 
     i64 sum = 0;
-    for (int i = 0; i < N * N; ++i) {
-        sum += trailhead.length[i];
+    i512 counts = {};
+    for (int i = 0; i < heightIndexes[9].length; ++i) {
+        counts = counts + _mm512_popcnt_epi64(bits[heightIndexes[9].items[i]]);
     }
 
-    // 10.1
+    for (int i = 0; i < 8; i++) {
+        sum += ((u64 *) &counts)[i];
+    }
+
+    // 7.87
 
     return sum;
 }
