@@ -70,7 +70,7 @@ const Puzzle PUZZLES[][3] = {
     },
     {
         {sumTrailheadScores, 150000, 717}, // 6.63 us
-        {sumTrailheadRatings, 200000, 1686} // 5.20 us
+        {sumTrailheadRatings, 200000, 1686} // 4.35 us
     }
 };
 

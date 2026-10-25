@@ -23,11 +23,7 @@ i64 sumTrailheadScores(const char *ptr, const char *end) {
     u8 map[N][N];
     for (int y = 0; y < N; ++y) {
         for (int x = 0; x < N; ++x) {
-            char c = *ptr++;
-            if (c == '.') {
-                map[y][x] = 255;
-            }
-            const u8 height = c - '0';
+            const u8 height = *ptr++ - '0';
             map[y][x] = height;
         }
         ptr++;
@@ -132,6 +128,7 @@ i64 sumTrailheadRatings(const char *ptr, const char *end) {
     for (int i = 0; i < N * N; i++) {
         heightIndexes[0][i] = heightLengths[map[0][i]]++;
     }
+    // 0.87
 
     // Create an adjacency list from each index to the indexes you can reach from it by walking up 1
     // The index is the row-major index of the map
@@ -156,6 +153,7 @@ i64 sumTrailheadRatings(const char *ptr, const char *end) {
             }
         }
     }
+    // 3.52
 
     u8 pathCounts[10][350] = {};
 
@@ -166,6 +164,7 @@ i64 sumTrailheadRatings(const char *ptr, const char *end) {
 
     for (int height = 0; height < 9; ++height) {
         for (int vertex = 0; vertex < heightLengths[height]; ++vertex) {
+            __builtin_assume(adjacency[height].length[vertex] <= 4);
             for (int i = 0; i < adjacency[height].length[vertex]; ++i) {
                 const u16 outgoingVertex = adjacency[height].items[vertex][i];
                 pathCounts[height + 1][outgoingVertex] += pathCounts[height][vertex];
