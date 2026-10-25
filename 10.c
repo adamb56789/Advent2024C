@@ -14,21 +14,20 @@ typedef struct {
     u8 length[SQUARES_PER_HEIGHT];
 } AdjacencySoa;
 
-typedef struct {
-    u16 items[SQUARES_PER_HEIGHT];
-    u16 length;
-} PositionList350;
-
 
 i64 sumTrailheadScores(const char *ptr, const char *end) {
-    u16 heightLengths[10] = {};
+    u16 heightLengths[10] = {0};
     u16 heightIndexes[N][N];
 
     // Parse file into NxN grid of height
     u8 map[N][N];
     for (int y = 0; y < N; ++y) {
         for (int x = 0; x < N; ++x) {
-            const u8 height = *ptr++ - '0';
+            char c = *ptr++;
+            if (c == '.') {
+                map[y][x] = 255;
+            }
+            const u8 height = c - '0';
             map[y][x] = height;
         }
         ptr++;
@@ -117,4 +116,67 @@ i64 sumTrailheadScores(const char *ptr, const char *end) {
 }
 
 
-i64 idk2(const char *ptr, const char *end);
+i64 sumTrailheadRatings(const char *ptr, const char *end) {
+    u16 heightLengths[10] = {0};
+    u16 heightIndexes[N][N];
+
+    // Parse file into NxN grid of height
+    u8 map[N][N];
+    for (int y = 0; y < N; ++y) {
+        for (int x = 0; x < N; ++x) {
+            const u8 height = *ptr++ - '0';
+            map[y][x] = height;
+        }
+        ptr++;
+    }
+    for (int i = 0; i < N * N; i++) {
+        heightIndexes[0][i] = heightLengths[map[0][i]]++;
+    }
+
+    // Create an adjacency list from each index to the indexes you can reach from it by walking up 1
+    // The index is the row-major index of the map
+    AdjacencySoa adjacency[9] = {0};
+    for (int y = 0; y < N; ++y) {
+        for (int x = 0; x < N; ++x) {
+            if (x < N - 1) {
+                if (map[y][x] + 1 == map[y][x + 1]) {
+                    soa_append(adjacency[map[y][x]], heightIndexes[y][x], heightIndexes[y][x+1]);
+                }
+                if (map[y][x] == map[y][x + 1] + 1) {
+                    soa_append(adjacency[map[y][x]-1], heightIndexes[y][x+1], heightIndexes[y][x]);
+                }
+            }
+            if (y < N - 1) {
+                if (map[y][x] + 1 == map[y + 1][x]) {
+                    soa_append(adjacency[map[y][x]], heightIndexes[y][x], heightIndexes[y+1][x]);
+                }
+                if (map[y][x] == map[y + 1][x] + 1) {
+                    soa_append(adjacency[map[y][x]-1], heightIndexes[y+1][x], heightIndexes[y][x]);
+                }
+            }
+        }
+    }
+
+    u8 pathCounts[10][350] = {};
+
+    // At height 0 each position reaches only itself
+    for (int i = 0; i < heightLengths[0]; ++i) {
+        pathCounts[0][i] = 1;
+    }
+
+    for (int height = 0; height < 9; ++height) {
+        for (int vertex = 0; vertex < heightLengths[height]; ++vertex) {
+            for (int i = 0; i < adjacency[height].length[vertex]; ++i) {
+                const u16 outgoingVertex = adjacency[height].items[vertex][i];
+                pathCounts[height + 1][outgoingVertex] += pathCounts[height][vertex];
+            }
+        }
+    }
+
+    u64 sum = 0;
+    for (int i = 0; i < heightLengths[9]; ++i) {
+        sum += pathCounts[9][i];
+    }
+
+    return sum;
+}

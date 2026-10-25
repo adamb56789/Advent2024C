@@ -8,6 +8,6 @@
 #include "shared.h"
 
 i64 sumTrailheadScores(const char *ptr, const char *end);
-i64 idk2(const char *ptr, const char *end);
+i64 sumTrailheadRatings(const char *ptr, const char *end);
 
 #endif //ADVENT2024C_10_H
