@@ -7,6 +7,7 @@
 #define N 53
 #define SQUARES_PER_HEIGHT 350
 
+#define IDX(x, y) ((y) * N + (x))
 #define soa_append(soa, i, x) soa.items[i][soa.length[i]++] = x;
 
 typedef struct {
@@ -35,7 +36,7 @@ i64 sumTrailheadScores(const char *ptr, const char *end) {
 
     // Create an adjacency list from each index to the indexes you can reach from it by walking up 1
     // The index is the row-major index of the map
-    AdjacencySoa adjacency[9] = {};
+    AdjacencySoa adjacency[9] = {0};
     for (int y = 0; y < N; ++y) {
         for (int x = 0; x < N; ++x) {
             if (x < N - 1) {
@@ -97,7 +98,7 @@ i64 sumTrailheadScores(const char *ptr, const char *end) {
     // The total number of edges in this graph is the same either way.
 
     i64 sum = 0;
-    i512 counts = {};
+    i512 counts = {0};
     for (int i = 0; i < SQUARES_PER_HEIGHT; ++i) {
         counts = counts + _mm512_popcnt_epi64(currentBits[i]);
     }
@@ -117,14 +118,21 @@ i64 sumTrailheadRatings(const char *ptr, const char *end) {
     u16 heightIndexes[N][N];
 
     // Parse file into NxN grid of height
+    // Move the data into a contiguous grid then ascii convert in separate stages.
+    // Helps the compiler which uses unrolled blocks of vmovups, then vmovdqu64+vpaddb for subtract, instead of
+    // mixing the two in a less efficient tight loop. clang 21.1.0 does the subtraction with 120 unrolled instructions no jumps.
     u8 map[N][N];
     for (int y = 0; y < N; ++y) {
         for (int x = 0; x < N; ++x) {
-            const u8 height = *ptr++ - '0';
-            map[y][x] = height;
+            map[y][x] = *ptr++;
         }
         ptr++;
     }
+    for (int i = 0; i < N*N; ++i) {
+        map[0][i] -= '0';
+    }
+    // 0.04
+
     for (int i = 0; i < N * N; i++) {
         heightIndexes[0][i] = heightLengths[map[0][i]]++;
     }
@@ -155,7 +163,7 @@ i64 sumTrailheadRatings(const char *ptr, const char *end) {
     }
     // 3.52
 
-    u8 pathCounts[10][350] = {};
+    u8 pathCounts[10][350] = {0};
 
     // At height 0 each position reaches only itself
     for (int i = 0; i < heightLengths[0]; ++i) {
